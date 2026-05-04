@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { useGetCurrentGameQuery } from '@/src/api/endpoints/gamesApi';
+import { useGetTailgatesQuery } from '@/src/api/endpoints/tailgatesApi';
 import { avatarImages } from '@/src/assets/images';
 import {
   AppHeader,
@@ -13,7 +15,7 @@ import {
   SectionHeader,
   TailgateCard,
 } from '@/src/components';
-import { currentGame, menuItems, tailgates } from '@/src/data/demoData';
+import { menuItems } from '@/src/data/demoData';
 import type { FoodItem, GamePhase, Tailgate } from '@/src/types';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
@@ -208,7 +210,8 @@ function filterAndSortTailgates(
   return sortTailgatesForDiscover(searched, filter);
 }
 
-function pickFeaturedBrowse(all: Tailgate[]): Tailgate {
+function pickFeaturedBrowse(all: Tailgate[]): Tailgate | undefined {
+  if (all.length === 0) return undefined;
   const preferred = all.find((t) => t.id === DEFAULT_FEATURED_ID && t.status === 'active');
   if (preferred) return preferred;
   const actives = all.filter((t) => t.status === 'active');
@@ -216,7 +219,8 @@ function pickFeaturedBrowse(all: Tailgate[]): Tailgate {
   return [...actives].sort((a, b) => b.trendingScore - a.trendingScore)[0];
 }
 
-function pickOthersBrowse(all: Tailgate[], featured: Tailgate): Tailgate[] {
+function pickOthersBrowse(all: Tailgate[], featured: Tailgate | undefined): Tailgate[] {
+  if (!featured) return [];
   return all.filter((t) => t.status === 'active' && t.id !== featured.id);
 }
 
@@ -247,21 +251,54 @@ function resultsSectionCopy(
   };
 }
 
+function discoverErrorMessage(err: unknown): string {
+  if (err && typeof err === 'object' && 'data' in err) {
+    const d = (err as { data: unknown }).data;
+    if (d && typeof d === 'object' && d !== null && 'message' in d) {
+      return String((d as { message: string }).message);
+    }
+  }
+  if (err && typeof err === 'object' && 'message' in err) {
+    return String((err as { message: string }).message);
+  }
+  return 'Could not load discover data.';
+}
+
 export default function DiscoverTabScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<DiscoverFilterId>('all');
 
+  const {
+    data: currentGame,
+    isLoading: gameLoading,
+    isError: gameError,
+    error: gameErr,
+    refetch: refetchGame,
+  } = useGetCurrentGameQuery();
+  const {
+    data: tailgatesResponse,
+    isLoading: tailgatesLoading,
+    isError: tailgatesError,
+    error: tailgatesErr,
+    refetch: refetchTailgates,
+  } = useGetTailgatesQuery();
+
+  const tailgatesList = useMemo(() => tailgatesResponse?.data ?? [], [tailgatesResponse]);
+  const isLoading = gameLoading || tailgatesLoading;
+  const isError = gameError || tailgatesError;
+  const combinedError = gameErr ?? tailgatesErr;
+
   const isBrowseDefault = selectedFilter === 'all' && searchQuery.trim() === '';
 
-  const featuredBrowse = useMemo(() => pickFeaturedBrowse(tailgates), []);
+  const featuredBrowse = useMemo(() => pickFeaturedBrowse(tailgatesList), [tailgatesList]);
   const otherActiveBrowse = useMemo(
-    () => pickOthersBrowse(tailgates, featuredBrowse),
-    [featuredBrowse]
+    () => pickOthersBrowse(tailgatesList, featuredBrowse),
+    [tailgatesList, featuredBrowse]
   );
 
   const matchingTailgates = useMemo(
-    () => filterAndSortTailgates(tailgates, menuItems, selectedFilter, searchQuery),
-    [searchQuery, selectedFilter]
+    () => filterAndSortTailgates(tailgatesList, menuItems, selectedFilter, searchQuery),
+    [tailgatesList, searchQuery, selectedFilter]
   );
 
   const resultsCopy = useMemo(
@@ -274,13 +311,24 @@ export default function DiscoverTabScreen() {
     setSelectedFilter('all');
   };
 
-  const metaLine = `${currentGame.gameDate} · ${currentGame.kickoffTime} · ${currentGame.weather}`;
+  const refetchDiscover = () => {
+    void refetchGame();
+    void refetchTailgates();
+  };
+
+  const metaLine = currentGame
+    ? `${currentGame.gameDate} · ${currentGame.kickoffTime} · ${currentGame.weather}`
+    : '';
 
   return (
     <Screen scroll safeAreaEdges={['top', 'left', 'right']} contentContainerStyle={styles.content}>
       <AppHeader
         title="TAILGATE LIKE A CHAMP!"
-        subtitle={`${phaseLabel(currentGame.phase)} · ${currentGame.matchup}`}
+        subtitle={
+          currentGame
+            ? `${phaseLabel(currentGame.phase)} · ${currentGame.matchup}`
+            : 'Loading gameday…'
+        }
         rightAction={
           <Pressable accessibilityRole="button" hitSlop={12} style={styles.iconHit}>
             <View style={styles.avatarRing}>
@@ -298,92 +346,114 @@ export default function DiscoverTabScreen() {
       <Text style={styles.screenLead}>Discover</Text>
       <Text style={styles.screenLeadMuted}>Browse menus and find tailgates around gameday.</Text>
 
-      <Card style={styles.gameCard} noPadding>
-        <View style={styles.gameTopAccent} />
-        <View style={styles.gameCardInner}>
-          <Text style={styles.gameLabel}>Current game</Text>
-          <Text style={styles.gameMatchup}>{currentGame.matchup}</Text>
-          <Text style={styles.gameMeta}>{metaLine}</Text>
-          <Text style={styles.gameMeta}>{currentGame.location}</Text>
-        </View>
-      </Card>
-
-      <SearchBar
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-        placeholder="Search tailgates, menus, lots…"
-      />
-
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filtersRow}
-      >
-        {FILTER_OPTIONS.map(({ id, label }) => (
-          <FilterChip
-            key={id}
-            label={label}
-            selected={selectedFilter === id}
-            onPress={() => setSelectedFilter(id)}
-          />
-        ))}
-      </ScrollView>
-
-      {isBrowseDefault ? (
-        <>
-          <SectionHeader
-            title="Trending now"
-            subtitle="Popular tailgate groups near campus before kickoff."
-          />
-          <TailgateCard
-            tailgate={featuredBrowse}
-            menuItems={menuItems}
-            highlightLabel="Top pick"
-            heroTone="gold"
-            onPress={() => router.push('/student/tailgate-detail')}
-            onViewPress={() => router.push('/student/tailgate-detail')}
-            viewLabel="View tailgate"
-          />
-
-          <SectionHeader title="Active near you" subtitle="More groups serving before kickoff." />
-          <View style={styles.tailgateList}>
-            {otherActiveBrowse.map((tailgate) => (
-              <TailgateCard
-                key={tailgate.id}
-                tailgate={tailgate}
-                menuItems={menuItems}
-                heroTone="navy"
-                onViewPress={() => router.push('/student/tailgate-detail')}
-                viewLabel="View tailgate"
-              />
-            ))}
+      {isLoading ? (
+        <Card style={styles.gameCard} variant="soft">
+          <View style={styles.loadingBlock}>
+            <ActivityIndicator size="large" color={colors.goldLight} accessibilityLabel="Loading discover" />
           </View>
-        </>
-      ) : matchingTailgates.length > 0 ? (
-        <>
-          <SectionHeader title={resultsCopy.title} subtitle={resultsCopy.subtitle} />
-          <View style={styles.tailgateList}>
-            {matchingTailgates.map((tailgate, index) => (
-              <TailgateCard
-                key={tailgate.id}
-                tailgate={tailgate}
-                menuItems={menuItems}
-                highlightLabel={
-                  index === 0 ? (searchQuery.trim() ? 'Top match' : 'Top pick') : undefined
-                }
-                heroTone={index === 0 ? 'gold' : 'navy'}
-                onViewPress={() => router.push('/student/tailgate-detail')}
-                viewLabel="View tailgate"
-              />
-            ))}
-          </View>
-        </>
-      ) : (
-        <Card style={styles.emptyCard} variant="soft" accentColor={colors.navy}>
-          <Text style={styles.emptyTitle}>No tailgates found</Text>
-          <Text style={styles.emptyBody}>Try a different food, lot, or tailgate group.</Text>
-          <SecondaryButton label="Clear search & filters" onPress={resetDiscover} />
         </Card>
+      ) : isError ? (
+        <Card variant="soft">
+          <Text style={styles.emptyBody}>{discoverErrorMessage(combinedError)}</Text>
+          <SecondaryButton label="Try again" onPress={() => void refetchDiscover()} />
+        </Card>
+      ) : (
+        <>
+          <Card style={styles.gameCard} noPadding>
+            <View style={styles.gameTopAccent} />
+            <View style={styles.gameCardInner}>
+              <Text style={styles.gameLabel}>Current game</Text>
+              <Text style={styles.gameMatchup}>{currentGame?.matchup ?? ''}</Text>
+              <Text style={styles.gameMeta}>{metaLine}</Text>
+              <Text style={styles.gameMeta}>{currentGame?.location ?? ''}</Text>
+            </View>
+          </Card>
+
+          <SearchBar
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholder="Search tailgates, menus, lots…"
+          />
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filtersRow}
+          >
+            {FILTER_OPTIONS.map(({ id, label }) => (
+              <FilterChip
+                key={id}
+                label={label}
+                selected={selectedFilter === id}
+                onPress={() => setSelectedFilter(id)}
+              />
+            ))}
+          </ScrollView>
+
+          {isBrowseDefault ? (
+            featuredBrowse ? (
+              <>
+                <SectionHeader
+                  title="Trending now"
+                  subtitle="Popular tailgate groups near campus before kickoff."
+                />
+                <TailgateCard
+                  tailgate={featuredBrowse}
+                  menuItems={menuItems}
+                  highlightLabel="Top pick"
+                  heroTone="gold"
+                  onPress={() => router.push('/student/tailgate-detail')}
+                  onViewPress={() => router.push('/student/tailgate-detail')}
+                  viewLabel="View tailgate"
+                />
+
+                <SectionHeader title="Active near you" subtitle="More groups serving before kickoff." />
+                <View style={styles.tailgateList}>
+                  {otherActiveBrowse.map((tailgate) => (
+                    <TailgateCard
+                      key={tailgate.id}
+                      tailgate={tailgate}
+                      menuItems={menuItems}
+                      heroTone="navy"
+                      onViewPress={() => router.push('/student/tailgate-detail')}
+                      viewLabel="View tailgate"
+                    />
+                  ))}
+                </View>
+              </>
+            ) : (
+              <Card style={styles.emptyCard} variant="soft" accentColor={colors.navy}>
+                <Text style={styles.emptyTitle}>No tailgates yet</Text>
+                <Text style={styles.emptyBody}>Check back once hosts publish their gameday groups.</Text>
+              </Card>
+            )
+          ) : matchingTailgates.length > 0 ? (
+            <>
+              <SectionHeader title={resultsCopy.title} subtitle={resultsCopy.subtitle} />
+              <View style={styles.tailgateList}>
+                {matchingTailgates.map((tailgate, index) => (
+                  <TailgateCard
+                    key={tailgate.id}
+                    tailgate={tailgate}
+                    menuItems={menuItems}
+                    highlightLabel={
+                      index === 0 ? (searchQuery.trim() ? 'Top match' : 'Top pick') : undefined
+                    }
+                    heroTone={index === 0 ? 'gold' : 'navy'}
+                    onViewPress={() => router.push('/student/tailgate-detail')}
+                    viewLabel="View tailgate"
+                  />
+                ))}
+              </View>
+            </>
+          ) : (
+            <Card style={styles.emptyCard} variant="soft" accentColor={colors.navy}>
+              <Text style={styles.emptyTitle}>No tailgates found</Text>
+              <Text style={styles.emptyBody}>Try a different food, lot, or tailgate group.</Text>
+              <SecondaryButton label="Clear search & filters" onPress={resetDiscover} />
+            </Card>
+          )}
+        </>
       )}
 
       <SecondaryButton label="Host tools" size="md" onPress={() => router.push('/dashboard')} />
@@ -500,5 +570,10 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: typography.body,
     lineHeight: 22,
+  },
+  loadingBlock: {
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

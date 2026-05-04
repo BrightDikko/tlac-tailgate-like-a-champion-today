@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Image, Pressable, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
 
+import { useGetMyImpactQuery } from '@/src/api/endpoints/impactApi';
 import { avatarImages } from '@/src/assets/images';
 import { AppHeader, Card, PrimaryButton, Screen, SecondaryButton } from '@/src/components';
-import { currentGame, currentUser, impact } from '@/src/data/localData';
+import { currentGame, currentUser } from '@/src/data/localData';
 import type { CurrentUser } from '@/src/types';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
@@ -40,7 +41,28 @@ function savedTailgateCount(user: CurrentUser): number {
   return Array.isArray(user.savedTailgateIds) ? user.savedTailgateIds.length : 0;
 }
 
+function impactErrorMessage(err: unknown): string {
+  if (err && typeof err === 'object' && 'data' in err) {
+    const d = (err as { data: unknown }).data;
+    if (d && typeof d === 'object' && d !== null && 'message' in d) {
+      return String((d as { message: string }).message);
+    }
+  }
+  if (err && typeof err === 'object' && 'message' in err) {
+    return String((err as { message: string }).message);
+  }
+  return 'Could not load impact data.';
+}
+
 export default function ProfileTabScreen() {
+  const {
+    data: impact,
+    isLoading: impactLoading,
+    isError: impactError,
+    error: impactErr,
+    refetch: refetchImpact,
+  } = useGetMyImpactQuery();
+
   const name = displayNameFor(currentUser);
   const initials = initialsFor(currentUser);
   const affiliation = affiliationFor(currentUser);
@@ -49,6 +71,10 @@ export default function ProfileTabScreen() {
   const avatarImage = currentUser.avatarImageKey
     ? (avatarImages as Record<string, ImageSourcePropType>)[currentUser.avatarImageKey]
     : undefined;
+
+  const servingsDisplay =
+    impactLoading || impact === undefined ? null : impact.servingsClaimed;
+  const wasteDisplay = impactLoading || impact === undefined ? null : impact.wasteDivertedPercent;
 
   return (
     <Screen scroll safeAreaEdges={['top', 'left', 'right']} contentContainerStyle={styles.content}>
@@ -62,6 +88,13 @@ export default function ProfileTabScreen() {
         }
       />
 
+      {impactError ? (
+        <Card variant="soft">
+          <Text style={styles.errorText}>{impactErrorMessage(impactErr)}</Text>
+          <SecondaryButton label="Try again" onPress={() => void refetchImpact()} style={styles.retryButton} />
+        </Card>
+      ) : null}
+
       <Card style={styles.heroCard} accentColor={colors.navy}>
         {avatarImage ? (
           <Image source={avatarImage} resizeMode="cover" style={styles.avatarImage} />
@@ -74,7 +107,11 @@ export default function ProfileTabScreen() {
         <Text style={styles.roleLine}>{affiliation}</Text>
         <View style={styles.statRow}>
           <View style={styles.statCell}>
-            <Text style={styles.statValue}>{impact.servingsClaimed}</Text>
+            {impactLoading ? (
+              <ActivityIndicator size="small" color={colors.goldLight} />
+            ) : (
+              <Text style={styles.statValue}>{servingsDisplay ?? '—'}</Text>
+            )}
             <Text style={styles.statLabel}>Servings claimed</Text>
           </View>
           <View style={styles.statDivider} />
@@ -95,7 +132,11 @@ export default function ProfileTabScreen() {
               <Text style={styles.rowSub}>Your share of today’s network total</Text>
             </View>
           </View>
-          <Text style={styles.rowValue}>{impact.wasteDivertedPercent}%</Text>
+          {impactLoading ? (
+            <ActivityIndicator size="small" color={colors.goldLight} />
+          ) : (
+            <Text style={styles.rowValue}>{wasteDisplay ?? '—'}%</Text>
+          )}
         </View>
       </Card>
 
@@ -230,5 +271,13 @@ const styles = StyleSheet.create({
     color: colors.goldLight,
     fontSize: typography.subheading,
     fontWeight: '900',
+  },
+  errorText: {
+    color: colors.muted,
+    fontSize: typography.body,
+    lineHeight: 22,
+  },
+  retryButton: {
+    marginTop: spacing.md,
   },
 });

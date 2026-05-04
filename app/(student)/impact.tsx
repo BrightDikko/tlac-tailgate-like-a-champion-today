@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View, type DimensionValue } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View, type DimensionValue } from 'react-native';
 
+import { useGetMyImpactQuery } from '@/src/api/endpoints/impactApi';
 import {
   AppHeader,
   Card,
@@ -10,13 +11,36 @@ import {
   SecondaryButton,
   SectionHeader,
 } from '@/src/components';
-import { impact } from '@/src/data/demoData';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
 
+function impactErrorMessage(err: unknown): string {
+  if (err && typeof err === 'object' && 'data' in err) {
+    const d = (err as { data: unknown }).data;
+    if (d && typeof d === 'object' && d !== null && 'message' in d) {
+      return String((d as { message: string }).message);
+    }
+  }
+  if (err && typeof err === 'object' && 'message' in err) {
+    return String((err as { message: string }).message);
+  }
+  return 'Could not load impact data.';
+}
+
 export default function ImpactTabScreen() {
-  const wasteProgressWidth = `${Math.max(0, Math.min(impact.wasteDivertedPercent, 100))}%` as DimensionValue;
+  const {
+    data: impact,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useGetMyImpactQuery();
+
+  const wasteProgressWidth =
+    impact !== undefined
+      ? (`${Math.max(0, Math.min(impact.wasteDivertedPercent, 100))}%` as DimensionValue)
+      : ('0%' as DimensionValue);
 
   return (
     <Screen scroll safeAreaEdges={['top', 'left', 'right']} contentContainerStyle={styles.content}>
@@ -35,31 +59,46 @@ export default function ImpactTabScreen() {
         subtitle="Together, the Notre Dame gameday network reduces waste."
       />
 
-      <Card style={styles.featuredCard} accentColor={colors.green}>
-        <Text style={styles.featuredPercent}>{impact.wasteDivertedPercent}% waste diverted</Text>
-        <Text style={styles.featuredCopy}>
-          Good food redirected through Student / Fan pickup and donation pathways.
-        </Text>
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: wasteProgressWidth }]} />
-        </View>
-      </Card>
+      {isLoading ? (
+        <Card style={styles.featuredCard} accentColor={colors.green}>
+          <View style={styles.loadingBlock}>
+            <ActivityIndicator size="large" color={colors.goldLight} accessibilityLabel="Loading impact" />
+          </View>
+        </Card>
+      ) : isError ? (
+        <Card variant="soft">
+          <Text style={styles.errorText}>{impactErrorMessage(error)}</Text>
+          <SecondaryButton label="Try again" onPress={() => void refetch()} style={styles.retryButton} />
+        </Card>
+      ) : impact !== undefined ? (
+        <>
+          <Card style={styles.featuredCard} accentColor={colors.green}>
+            <Text style={styles.featuredPercent}>{impact.wasteDivertedPercent}% waste diverted</Text>
+            <Text style={styles.featuredCopy}>
+              Good food redirected through Student / Fan pickup and donation pathways.
+            </Text>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: wasteProgressWidth }]} />
+            </View>
+          </Card>
 
-      <View style={styles.metricsGrid}>
-        <MetricCard label="Servings claimed" value={impact.servingsClaimed} style={styles.metricCard} />
-        <MetricCard label="Pounds donated" value={impact.poundsDonated} style={styles.metricCard} />
-        <MetricCard label="Tailgates" value={impact.participatingTailgates} style={styles.metricCard} />
-        <MetricCard
-          label="Student / Fan pickups"
-          value={impact.studentPickups}
-          style={styles.metricCard}
-        />
-        <MetricCard
-          label="Donation centers"
-          value={impact.donationCentersSupported}
-          style={styles.metricCardWide}
-        />
-      </View>
+          <View style={styles.metricsGrid}>
+            <MetricCard label="Servings claimed" value={impact.servingsClaimed} style={styles.metricCard} />
+            <MetricCard label="Pounds donated" value={impact.poundsDonated} style={styles.metricCard} />
+            <MetricCard label="Tailgates" value={impact.participatingTailgates} style={styles.metricCard} />
+            <MetricCard
+              label="Student / Fan pickups"
+              value={impact.studentPickups}
+              style={styles.metricCard}
+            />
+            <MetricCard
+              label="Donation centers"
+              value={impact.donationCentersSupported}
+              style={styles.metricCardWide}
+            />
+          </View>
+        </>
+      ) : null}
 
       <Card variant="soft" accentColor={colors.gold}>
         <Text style={styles.todayTitle}>Today on TLAC</Text>
@@ -131,5 +170,19 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.body,
     lineHeight: 22,
+  },
+  loadingBlock: {
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 120,
+  },
+  errorText: {
+    color: colors.muted,
+    fontSize: typography.body,
+    lineHeight: 22,
+  },
+  retryButton: {
+    marginTop: spacing.md,
   },
 });
