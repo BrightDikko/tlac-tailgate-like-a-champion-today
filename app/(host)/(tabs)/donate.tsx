@@ -3,10 +3,11 @@ import { router } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { useGetDonationCentersQuery } from '@/src/api/endpoints/donationCentersApi';
-import { Card, HostBrandedHeader, PrimaryButton, Screen, SecondaryButton, StatusChip } from '@/src/components';
+import { Card, FilterChip, HostBrandedHeader, PrimaryButton, Screen, SecondaryButton } from '@/src/components';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
+import { acceptedCategoriesForCenter, categoryLabel } from '@/src/utils/donationCategories';
 
 function donateErrorMessage(err: unknown): string {
   if (err && typeof err === 'object' && 'data' in err) {
@@ -61,46 +62,68 @@ export default function HostDonateTabScreen() {
         </Card>
       ) : (
         <View style={styles.list}>
-          {centers.map((center) => (
-            <Card key={center.id} style={styles.centerCard} variant="soft">
-              <View style={styles.centerHead}>
-                <Text style={styles.centerName}>{center.name}</Text>
-                <StatusChip
-                  status={center.acceptsPreparedFood ? 'available' : 'planned'}
-                  label={center.acceptsPreparedFood ? 'Prepared food accepted' : 'Shelf-stable only'}
-                  showDot={false}
-                />
-              </View>
+          {centers.map((center) => {
+            const acceptedCategories = acceptedCategoriesForCenter(center);
+            const canLogDonation = acceptedCategories.length > 0;
+            return (
+              <Card key={center.id} style={styles.centerCard} variant="soft">
+                <View style={styles.centerHead}>
+                  <Text style={styles.centerName}>{center.name}</Text>
+                </View>
+                <View style={styles.categoryRow}>
+                  {acceptedCategories.map((category) => (
+                    <FilterChip key={`${center.id}-${category}`} label={categoryLabel(category)} />
+                  ))}
+                  {acceptedCategories.length === 0 ? (
+                    <Text style={styles.preparedHint}>No donation categories enabled for this center.</Text>
+                  ) : null}
+                </View>
 
-              <View style={styles.metaRow}>
-                <Ionicons name="location-outline" size={16} color={colors.goldLight} />
-                <Text style={styles.metaText}>{center.address}</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Ionicons name="navigate-outline" size={16} color={colors.goldLight} />
-                <Text style={styles.metaText}>{center.distance}</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Ionicons name="call-outline" size={16} color={colors.goldLight} />
-                <Text style={styles.metaText}>{center.phone}</Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Ionicons name="time-outline" size={16} color={colors.goldLight} />
-                <Text style={styles.metaText}>{center.openStatus}</Text>
-              </View>
+                <View style={styles.metaRow}>
+                  <Ionicons name="location-outline" size={16} color={colors.goldLight} />
+                  <Text style={styles.metaText}>{center.address}</Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Ionicons name="navigate-outline" size={16} color={colors.goldLight} />
+                  <Text style={styles.metaText}>{center.distance}</Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Ionicons name="call-outline" size={16} color={colors.goldLight} />
+                  <Text style={styles.metaText}>{center.phone}</Text>
+                </View>
+                <View style={styles.metaRow}>
+                  <Ionicons name="time-outline" size={16} color={colors.goldLight} />
+                  <Text style={styles.metaText}>{center.openStatus}</Text>
+                </View>
 
-              {center.description ? <Text style={styles.description}>{center.description}</Text> : null}
+                {center.description ? <Text style={styles.description}>{center.description}</Text> : null}
 
-              <View style={styles.actions}>
-                <SecondaryButton
-                  label="View Details"
-                  size="md"
-                  onPress={() => router.push('/host/donation-center-detail')}
-                />
-                <PrimaryButton label="Log Donation" size="md" onPress={() => router.push('/host/log-donation')} />
-              </View>
-            </Card>
-          ))}
+                <View style={styles.actions}>
+                  <SecondaryButton
+                    label="View Details"
+                    size="md"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/host/donation-center-detail',
+                        params: { donationCenterId: center.id },
+                      })
+                    }
+                  />
+                  <PrimaryButton
+                    label="Log Donation"
+                    size="md"
+                    disabled={!canLogDonation}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/host/log-donation',
+                        params: { donationCenterId: center.id },
+                      })
+                    }
+                  />
+                </View>
+              </Card>
+            );
+          })}
         </View>
       )}
     </Screen>
@@ -132,6 +155,12 @@ const styles = StyleSheet.create({
   centerHead: {
     gap: spacing.sm,
   },
+  categoryRow: {
+    marginTop: spacing.xs,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
   centerName: {
     color: colors.goldLight,
     fontSize: typography.subheading,
@@ -154,6 +183,13 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: typography.body,
     lineHeight: 22,
+  },
+  preparedHint: {
+    marginTop: spacing.sm,
+    color: colors.muted,
+    fontSize: typography.caption,
+    fontWeight: '600',
+    lineHeight: 18,
   },
   actions: {
     marginTop: spacing.md,

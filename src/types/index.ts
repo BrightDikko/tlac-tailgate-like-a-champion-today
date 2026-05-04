@@ -85,6 +85,7 @@ export interface FoodItem {
 }
 
 export type SurplusStatus = 'available' | 'almost_gone' | 'claimed' | 'expired' | 'donated';
+export type DonationCategory = 'prepared_food' | 'packaged_drinks' | 'packaged_food' | 'produce';
 
 export interface SurplusItem {
   id: string;
@@ -124,7 +125,8 @@ export interface DonationCenter {
   name: string;
   address: string;
   distance: string;
-  acceptsPreparedFood: boolean;
+  acceptsPreparedFood?: boolean;
+  acceptedDonationCategories?: DonationCategory[];
   openStatus: string;
   phone: string;
   description?: string;

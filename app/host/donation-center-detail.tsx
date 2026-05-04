@@ -1,15 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 
 import { useGetDonationCenterByIdQuery } from '@/src/api/endpoints/donationCentersApi';
 import { placeholderImages } from '@/src/assets/images';
-import { Card, PrimaryButton, Screen, SecondaryButton, StatusChip } from '@/src/components';
+import { Card, FilterChip, PrimaryButton, Screen, SecondaryButton } from '@/src/components';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
-
-const DETAIL_CENTER_ID = 'center-1';
+import { paramOne } from '@/src/utils/routeParams';
+import { acceptedCategoriesForCenter, categoryLabel } from '@/src/utils/donationCategories';
 
 function detailErrorMessage(err: unknown): string {
   if (err && typeof err === 'object' && 'data' in err) {
@@ -24,14 +24,29 @@ function detailErrorMessage(err: unknown): string {
   return 'Could not load donation center.';
 }
 
+function isNotFoundError(err: unknown): boolean {
+  if (err && typeof err === 'object' && 'data' in err) {
+    const d = (err as { data: unknown }).data;
+    if (d && typeof d === 'object' && d !== null) {
+      if ('code' in d && (d as { code?: string }).code === 'NOT_FOUND') return true;
+      const msg = 'message' in d ? String((d as { message: string }).message).toLowerCase() : '';
+      if (msg.includes('not found')) return true;
+    }
+  }
+  return false;
+}
+
 export default function DonationCenterDetailScreen() {
+  const params = useLocalSearchParams<{ donationCenterId?: string | string[] }>();
+  const centerId = paramOne(params.donationCenterId) ?? 'center-1';
+
   const {
     data: center,
     isLoading,
     isError,
     error,
     refetch,
-  } = useGetDonationCenterByIdQuery(DETAIL_CENTER_ID);
+  } = useGetDonationCenterByIdQuery(centerId, { skip: !centerId });
 
   return (
     <Screen scroll contentContainerStyle={styles.content}>
@@ -50,16 +65,28 @@ export default function DonationCenterDetailScreen() {
       ) : isError ? (
         <Card variant="soft">
           <Text style={styles.errorText}>{detailErrorMessage(error)}</Text>
-          <SecondaryButton label="Try again" onPress={() => void refetch()} style={styles.retryButton} />
+          {isNotFoundError(error) ? (
+            <SecondaryButton label="Back to Donate" onPress={() => router.push('/donate')} style={styles.retryButton} />
+          ) : (
+            <SecondaryButton label="Try again" onPress={() => void refetch()} style={styles.retryButton} />
+          )}
         </Card>
       ) : center === undefined ? (
         <Card variant="soft" accentColor={colors.navy}>
           <Text style={styles.emptyText}>No donation center available.</Text>
+          <SecondaryButton label="Back to Donate" onPress={() => router.push('/donate')} style={styles.retryButton} />
         </Card>
       ) : (
         <>
+          {acceptedCategoriesForCenter(center).length > 0 ? (
+            <View style={styles.categoryRow}>
+              {acceptedCategoriesForCenter(center).map((category) => (
+                <FilterChip key={`${center.id}-${category}`} label={categoryLabel(category)} />
+              ))}
+            </View>
+          ) : null}
+
           <Card accentColor={colors.green}>
-            <StatusChip status="available" label="Verified center" showDot={false} />
             <Text style={styles.centerName}>{center.name}</Text>
             <Text style={styles.impactLabel}>{center.impactLabel ?? 'Donation partner'}</Text>
 
@@ -78,7 +105,7 @@ export default function DonationCenterDetailScreen() {
           </Card>
 
           <Card variant="soft">
-            <Text style={styles.sectionTitle}>Prepared food policy</Text>
+            <Text style={styles.sectionTitle}>Donation policy</Text>
             {(center.policyNotes ?? []).map((note) => (
               <View key={note} style={styles.bulletRow}>
                 <Ionicons name="checkmark-circle" size={16} color={colors.green} />
@@ -111,10 +138,18 @@ export default function DonationCenterDetailScreen() {
               style={styles.routePreviewImage}
               accessibilityLabel="Route preview"
             />
-            <Text style={styles.routeText}>Estimated drive: 9 min from Stadium Lot B</Text>
+            <Text style={styles.routeText}>Use your maps app for turn-by-turn directions to this center.</Text>
           </Card>
 
-          <PrimaryButton label="Log Donation" onPress={() => router.push('/host/log-donation')} />
+          <PrimaryButton
+            label="Log Donation"
+            onPress={() =>
+              router.push({
+                pathname: '/host/log-donation',
+                params: { donationCenterId: center.id },
+              })
+            }
+          />
           <SecondaryButton label="Back to Donate" onPress={() => router.push('/donate')} />
         </>
       )}
@@ -154,6 +189,11 @@ const styles = StyleSheet.create({
     color: colors.goldLight,
     fontSize: typography.heading,
     fontWeight: '900',
+  },
+  categoryRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
   impactLabel: {
     marginTop: spacing.xs,

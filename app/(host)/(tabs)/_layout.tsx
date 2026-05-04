@@ -51,6 +51,13 @@ export default function HostShellLayout() {
         }}
       />
       <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: (props) => tabIcon('person', 'person-outline', props),
+        }}
+      />
+      <Tabs.Screen
         name="tailgate-manage"
         options={{
           href: null,
