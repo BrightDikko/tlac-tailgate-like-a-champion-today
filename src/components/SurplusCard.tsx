@@ -21,6 +21,8 @@ interface SurplusCardProps {
   item: SurplusItem;
   onClaimPress?: () => void;
   claimLabel?: string;
+  /** When true, the claim action is disabled (e.g. while a claim request is in flight). */
+  claimDisabled?: boolean;
   style?: StyleProp<ViewStyle>;
   showPickupNote?: boolean;
 }
@@ -29,6 +31,7 @@ export function SurplusCard({
   item,
   onClaimPress,
   claimLabel = 'Claim Servings',
+  claimDisabled = false,
   style,
   showPickupNote = true,
 }: SurplusCardProps) {
@@ -73,7 +76,14 @@ export function SurplusCard({
 
       {showPickupNote ? <Text style={styles.note}>Pickup note: {item.pickupNote}</Text> : null}
 
-      {onClaimPress ? <PrimaryButton label={claimLabel} onPress={onClaimPress} style={styles.button} /> : null}
+      {onClaimPress ? (
+        <PrimaryButton
+          label={claimLabel}
+          onPress={onClaimPress}
+          disabled={claimDisabled}
+          style={styles.button}
+        />
+      ) : null}
     </Card>
   );
 }

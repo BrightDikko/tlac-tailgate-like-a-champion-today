@@ -2,12 +2,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useClaimSurplusMutation } from '@/src/api/endpoints/claimsApi';
 import { useGetSurplusQuery } from '@/src/api/endpoints/surplusApi';
 import { AppHeader, Card, Screen, SectionHeader, SecondaryButton, SurplusCard } from '@/src/components';
 import { currentGame } from '@/src/data/demoData';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
+import type { SurplusItem } from '@/src/types';
 
 function surplusErrorMessage(err: unknown): string {
   if (err && typeof err === 'object' && 'data' in err) {
@@ -26,8 +28,20 @@ export default function SurplusTabScreen() {
   const { data, isLoading, isError, error, refetch } = useGetSurplusQuery();
   const surplusItems = data?.data ?? [];
 
-  const goToPickup = () => {
-    router.push('/student/pickup-timer');
+  const [claimSurplus, { isLoading: isClaiming, error: claimError, reset: resetClaimError }] =
+    useClaimSurplusMutation();
+
+  const handleClaimPress = async (item: SurplusItem) => {
+    resetClaimError();
+    try {
+      await claimSurplus({
+        surplusId: item.id,
+        input: { surplusId: item.id, servingsClaimed: 2 },
+      }).unwrap();
+      router.push('/student/pickup-timer');
+    } catch {
+      // Mutation error is surfaced via claimError
+    }
   };
 
   return (
@@ -69,11 +83,23 @@ export default function SurplusTabScreen() {
           <SecondaryButton label="Try again" onPress={() => void refetch()} style={styles.retryButton} />
         </Card>
       ) : (
-        <View style={styles.list}>
-          {surplusItems.map((item) => (
-            <SurplusCard key={item.id} item={item} onClaimPress={goToPickup} />
-          ))}
-        </View>
+        <>
+          {claimError ? (
+            <Card variant="soft">
+              <Text style={styles.claimErrorText}>{surplusErrorMessage(claimError)}</Text>
+            </Card>
+          ) : null}
+          <View style={styles.list}>
+            {surplusItems.map((item) => (
+              <SurplusCard
+                key={item.id}
+                item={item}
+                onClaimPress={() => void handleClaimPress(item)}
+                claimDisabled={isClaiming}
+              />
+            ))}
+          </View>
+        </>
       )}
     </Screen>
   );
@@ -127,5 +153,9 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: spacing.md,
+  },
+  claimErrorText: {
+    color: colors.muted,
+    fontSize: typography.body,
   },
 });
