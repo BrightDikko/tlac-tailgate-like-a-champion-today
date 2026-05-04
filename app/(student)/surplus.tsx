@@ -34,11 +34,19 @@ export default function SurplusTabScreen() {
   const handleClaimPress = async (item: SurplusItem) => {
     resetClaimError();
     try {
-      await claimSurplus({
+      const claim = await claimSurplus({
         surplusId: item.id,
         input: { surplusId: item.id, servingsClaimed: 2 },
       }).unwrap();
-      router.push('/student/pickup-timer');
+      router.push({
+        pathname: '/student/pickup-timer',
+        params: {
+          claimRecordId: claim.id,
+          claimId: claim.claimId ?? '',
+          surplusId: claim.surplusId,
+          servingsClaimed: String(claim.servingsClaimed),
+        },
+      });
     } catch {
       // Mutation error is surfaced via claimError
     }
