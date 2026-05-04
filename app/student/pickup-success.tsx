@@ -30,9 +30,8 @@ export default function PickupSuccessScreen() {
   const servingsCount =
     Number.isFinite(parsedServings) && parsedServings > 0 ? parsedServings : 2;
 
-  const displayClaimId = claimIdParam && claimIdParam.length > 0 ? claimIdParam : 'TLAC-4821';
-  const displayGroup =
-    groupNameParam && groupNameParam.length > 0 ? groupNameParam : 'Domer Grill Crew';
+  const displayClaimId = claimIdParam && claimIdParam.length > 0 ? claimIdParam : '—';
+  const displayGroup = groupNameParam && groupNameParam.length > 0 ? groupNameParam : 'Host listing';
 
   const subtitleServings = `${servingsCount} serving${servingsCount === 1 ? '' : 's'}`;
 
@@ -44,7 +43,7 @@ export default function PickupSuccessScreen() {
         </View>
         <SectionHeader
           title="Pickup Confirmed"
-          subtitle={`You helped save ${subtitleServings} from going to waste.`}
+          subtitle={`You confirmed pickup for ${subtitleServings}.`}
           style={styles.header}
         />
       </View>
@@ -69,7 +68,7 @@ export default function PickupSuccessScreen() {
       </Card>
 
       <PrimaryButton label="View impact" onPress={() => router.push('/impact')} />
-      <SecondaryButton label="Back to surplus" onPress={() => router.push('/surplus')} />
+      <SecondaryButton label="Claim more surplus" onPress={() => router.push('/surplus')} />
     </Screen>
   );
 }

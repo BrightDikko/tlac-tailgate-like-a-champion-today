@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   Image,
   StyleSheet,
@@ -25,6 +26,8 @@ interface SurplusCardProps {
   claimDisabled?: boolean;
   style?: StyleProp<ViewStyle>;
   showPickupNote?: boolean;
+  footerContent?: ReactNode;
+  disabledReason?: string;
 }
 
 export function SurplusCard({
@@ -34,6 +37,8 @@ export function SurplusCard({
   claimDisabled = false,
   style,
   showPickupNote = true,
+  footerContent,
+  disabledReason,
 }: SurplusCardProps) {
   const accentColor =
     item.status === 'almost_gone'
@@ -76,11 +81,15 @@ export function SurplusCard({
 
       {showPickupNote ? <Text style={styles.note}>Pickup note: {item.pickupNote}</Text> : null}
 
+      {footerContent ? <View style={styles.footerWrap}>{footerContent}</View> : null}
+
+      {disabledReason ? <Text style={styles.disabledReason}>{disabledReason}</Text> : null}
+
       {onClaimPress ? (
         <PrimaryButton
           label={claimLabel}
           onPress={onClaimPress}
-          disabled={claimDisabled}
+          disabled={claimDisabled || Boolean(disabledReason)}
           style={styles.button}
         />
       ) : null}
@@ -173,6 +182,15 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.caption,
     lineHeight: 20,
+  },
+  footerWrap: {
+    marginTop: spacing.md,
+  },
+  disabledReason: {
+    marginTop: spacing.md,
+    color: colors.muted,
+    fontSize: typography.caption,
+    lineHeight: 18,
   },
   button: {
     marginTop: spacing.xl,

@@ -38,8 +38,47 @@ function asRemoteClaim(value: unknown): QueryReturnValue<
   >;
 }
 
+function asRemoteClaimsList(value: unknown): QueryReturnValue<
+  ClaimRecord[],
+  ApiError | FetchBaseQueryError,
+  FetchBaseQueryMeta | undefined
+> {
+  return value as QueryReturnValue<
+    ClaimRecord[],
+    ApiError | FetchBaseQueryError,
+    FetchBaseQueryMeta | undefined
+  >;
+}
+
 export const claimsApi = baseApi.injectEndpoints({
+  overrideExisting: true,
   endpoints: (builder) => ({
+    getMyClaims: builder.query<ClaimRecord[], void>({
+      queryFn: async (_arg, _api, _extraOptions, baseQuery) => {
+        if (API_MODE === 'mock') {
+          const result = await claimsHandlers.getMyClaims();
+          return fromApiResult(result);
+        }
+        return asRemoteClaimsList(
+          await baseQuery({
+            url: '/claims/me',
+            method: 'GET',
+          })
+        );
+      },
+      providesTags: (result) => {
+        const listTag = { type: 'Claim' as const, id: 'LIST' as const };
+        if (result === undefined) {
+          return [listTag];
+        }
+        const claimTags = result.map((claim) => ({
+          type: 'Claim' as const,
+          id: claim.id,
+        }));
+        return [...claimTags, listTag];
+      },
+    }),
+
     claimSurplus: builder.mutation<
       ClaimRecord,
       { surplusId: string; input: ClaimInput }
@@ -57,10 +96,11 @@ export const claimsApi = baseApi.injectEndpoints({
           })
         );
       },
-      invalidatesTags: (_result, _error, { surplusId }) => [
-        { type: 'Surplus', id: surplusId },
-        { type: 'Surplus', id: 'LIST' },
+      invalidatesTags: (result, _error, { surplusId }) => [
         { type: 'Claim', id: 'LIST' },
+        ...(result?.id ? [{ type: 'Claim' as const, id: result.id }] : []),
+        { type: 'Surplus', id: result?.surplusId ?? surplusId },
+        { type: 'Surplus', id: 'LIST' },
       ],
     }),
 
@@ -81,9 +121,11 @@ export const claimsApi = baseApi.injectEndpoints({
           })
         );
       },
-      invalidatesTags: (_result, _error, { id }) => [
+      invalidatesTags: (result, _error, { id }) => [
         { type: 'Claim', id },
         { type: 'Claim', id: 'LIST' },
+        ...(result?.surplusId ? [{ type: 'Surplus' as const, id: result.surplusId }] : []),
+        { type: 'Surplus', id: 'LIST' },
       ],
     }),
 
@@ -104,14 +146,19 @@ export const claimsApi = baseApi.injectEndpoints({
           })
         );
       },
-      invalidatesTags: (_result, _error, { id }) => [
+      invalidatesTags: (result, _error, { id }) => [
         { type: 'Claim', id },
         { type: 'Claim', id: 'LIST' },
+        ...(result?.surplusId ? [{ type: 'Surplus' as const, id: result.surplusId }] : []),
         { type: 'Surplus', id: 'LIST' },
       ],
     }),
   }),
 });
 
-export const { useClaimSurplusMutation, useConfirmClaimMutation, useReleaseClaimMutation } =
-  claimsApi;
+export const {
+  useGetMyClaimsQuery,
+  useClaimSurplusMutation,
+  useConfirmClaimMutation,
+  useReleaseClaimMutation,
+} = claimsApi;

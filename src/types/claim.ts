@@ -10,7 +10,11 @@ export type ClaimRecord = {
   surplusId: string;
   servingsClaimed: number;
   status: ClaimStatus;
+  userId?: string;
   claimId?: string;
+  expiresAt?: string;
+  confirmedAt?: string;
+  releasedAt?: string;
   createdAt?: string;
   updatedAt?: string;
 };

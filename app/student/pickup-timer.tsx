@@ -1,10 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
-import { useConfirmClaimMutation, useReleaseClaimMutation } from '@/src/api/endpoints/claimsApi';
+import { useConfirmClaimMutation, useGetMyClaimsQuery, useReleaseClaimMutation } from '@/src/api/endpoints/claimsApi';
 import { useGetSurplusByIdQuery } from '@/src/api/endpoints/surplusApi';
 import { Card, PrimaryButton, Screen, SecondaryButton, SectionHeader } from '@/src/components';
-import { surplusItems } from '@/src/data/demoData';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
@@ -38,8 +37,31 @@ export default function PickupTimerScreen() {
   }>();
 
   const claimRecordId = paramOne(params.claimRecordId);
-  const surplusId = paramOne(params.surplusId);
-  const shouldFetchSurplus = Boolean(surplusId);
+  const claimIdParam = paramOne(params.claimId);
+  const surplusIdParam = paramOne(params.surplusId);
+  const servingsParam = paramOne(params.servingsClaimed);
+
+  const {
+    data: claims,
+    isLoading: isClaimsLoading,
+    isError: isClaimsError,
+    error: claimsError,
+    refetch: refetchClaims,
+  } = useGetMyClaimsQuery();
+
+  const activeClaim =
+    claims?.find((c) => c.id === claimRecordId) ??
+    claims?.find(
+      (c) =>
+        c.status === 'reserved' &&
+        ((claimIdParam !== undefined && claimIdParam.length > 0 && c.claimId === claimIdParam) ||
+          (surplusIdParam !== undefined && surplusIdParam.length > 0 && c.surplusId === surplusIdParam))
+    );
+
+  const resolvedClaimRecordId = claimRecordId ?? activeClaim?.id;
+  const resolvedClaimId = claimIdParam && claimIdParam.length > 0 ? claimIdParam : (activeClaim?.claimId ?? '');
+  const resolvedSurplusId =
+    surplusIdParam && surplusIdParam.length > 0 ? surplusIdParam : (activeClaim?.surplusId ?? '');
 
   const [
     confirmClaim,
@@ -54,39 +76,32 @@ export default function PickupTimerScreen() {
     isError: isSurplusError,
     error: surplusError,
     refetch: refetchSurplus,
-  } = useGetSurplusByIdQuery(surplusId ?? '', { skip: !shouldFetchSurplus });
+  } = useGetSurplusByIdQuery(resolvedSurplusId, { skip: resolvedSurplusId.length === 0 });
 
-  const fallbackItem = surplusItems.find((item) => item.id === 'surplus-1') ?? surplusItems[0];
-
-  const claimIdParam = paramOne(params.claimId);
-  const displayClaimId =
-    claimIdParam && claimIdParam.length > 0
-      ? claimIdParam
-      : (surplusItem?.claimId ?? fallbackItem.claimId ?? 'TLAC-4821');
-
-  const servingsParam = paramOne(params.servingsClaimed);
   const parsedServings = servingsParam !== undefined ? Number.parseInt(servingsParam, 10) : NaN;
   const servingsCount =
-    Number.isFinite(parsedServings) && parsedServings > 0 ? parsedServings : 2;
+    Number.isFinite(parsedServings) && parsedServings > 0
+      ? parsedServings
+      : (activeClaim?.servingsClaimed ?? 1);
 
-  const reservedItem = surplusItem ?? fallbackItem;
+  const canContinue = Boolean(resolvedClaimRecordId) && Boolean(resolvedSurplusId);
 
   const actionBusy = isConfirming || isReleasing;
 
   const handleConfirmPickup = async () => {
     resetConfirmError();
-    if (claimRecordId && claimRecordId.length > 0) {
+    if (resolvedClaimRecordId && resolvedClaimRecordId.length > 0) {
       try {
-        await confirmClaim({ id: claimRecordId }).unwrap();
+        const confirmed = await confirmClaim({ id: resolvedClaimRecordId }).unwrap();
         router.push({
           pathname: '/student/pickup-success',
           params: {
-            claimRecordId,
-            claimId: displayClaimId,
-            surplusId: surplusId ?? '',
-            servingsClaimed: String(servingsCount),
-            foodName: reservedItem.foodName,
-            groupName: reservedItem.groupName,
+            claimRecordId: confirmed.id,
+            claimId: confirmed.claimId ?? resolvedClaimId,
+            surplusId: confirmed.surplusId,
+            servingsClaimed: String(confirmed.servingsClaimed),
+            foodName: surplusItem?.foodName ?? '',
+            groupName: surplusItem?.groupName ?? '',
           },
         });
       } catch {
@@ -99,9 +114,9 @@ export default function PickupTimerScreen() {
 
   const handleReleaseClaim = async () => {
     resetReleaseError();
-    if (claimRecordId && claimRecordId.length > 0) {
+    if (resolvedClaimRecordId && resolvedClaimRecordId.length > 0) {
       try {
-        await releaseClaim({ id: claimRecordId }).unwrap();
+        await releaseClaim({ id: resolvedClaimRecordId }).unwrap();
         router.push('/surplus');
       } catch {
         // surfaced via releaseError
@@ -111,13 +126,13 @@ export default function PickupTimerScreen() {
     router.push('/surplus');
   };
 
-  const detailCard = shouldFetchSurplus && isSurplusLoading ? (
+  const detailCard = resolvedSurplusId.length > 0 && isSurplusLoading ? (
     <Card variant="soft">
       <View style={styles.loadingBlock}>
         <ActivityIndicator size="large" color={colors.goldLight} accessibilityLabel="Loading surplus details" />
       </View>
     </Card>
-  ) : shouldFetchSurplus && isSurplusError ? (
+  ) : resolvedSurplusId.length > 0 && isSurplusError ? (
     <Card variant="soft">
       <Text style={styles.errorText}>{surplusErrorMessage(surplusError)}</Text>
       <SecondaryButton label="Try again" onPress={() => void refetchSurplus()} style={styles.retryButton} />
@@ -126,11 +141,11 @@ export default function PickupTimerScreen() {
     <Card variant="soft">
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>Claim ID</Text>
-        <Text style={styles.detailValue}>{displayClaimId}</Text>
+        <Text style={styles.detailValue}>{resolvedClaimId || activeClaim?.id || '—'}</Text>
       </View>
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>Food item</Text>
-        <Text style={styles.detailValue}>{reservedItem.foodName}</Text>
+        <Text style={styles.detailValue}>{surplusItem?.foodName ?? '—'}</Text>
       </View>
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>Quantity</Text>
@@ -140,14 +155,51 @@ export default function PickupTimerScreen() {
       </View>
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>Location</Text>
-        <Text style={styles.detailValue}>{reservedItem.location}</Text>
+        <Text style={styles.detailValue}>{surplusItem?.location ?? '—'}</Text>
       </View>
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>Pickup note</Text>
-        <Text style={styles.detailValue}>{reservedItem.pickupNote}</Text>
+        <Text style={styles.detailValue}>{surplusItem?.pickupNote ?? '—'}</Text>
       </View>
     </Card>
   );
+
+  if (isClaimsLoading) {
+    return (
+      <Screen scroll contentContainerStyle={styles.content}>
+        <SectionHeader title="Claim Reserved" subtitle="Your servings are held for pickup." />
+        <Card variant="soft">
+          <View style={styles.loadingBlock}>
+            <ActivityIndicator size="large" color={colors.goldLight} accessibilityLabel="Loading claim" />
+          </View>
+        </Card>
+      </Screen>
+    );
+  }
+
+  if (isClaimsError) {
+    return (
+      <Screen scroll contentContainerStyle={styles.content}>
+        <SectionHeader title="Claim Reserved" subtitle="Your servings are held for pickup." />
+        <Card variant="soft" accentColor={colors.navy}>
+          <Text style={styles.errorText}>{surplusErrorMessage(claimsError)}</Text>
+          <SecondaryButton label="Try again" onPress={() => void refetchClaims()} style={styles.retryButton} />
+        </Card>
+      </Screen>
+    );
+  }
+
+  if (!canContinue) {
+    return (
+      <Screen scroll contentContainerStyle={styles.content}>
+        <SectionHeader title="Claim Reserved" subtitle="Your servings are held for pickup." />
+        <Card variant="soft" accentColor={colors.navy}>
+          <Text style={styles.errorText}>No active claim selected.</Text>
+          <SecondaryButton label="Back to surplus" onPress={() => router.push('/surplus')} style={styles.retryButton} />
+        </Card>
+      </Screen>
+    );
+  }
 
   return (
     <Screen scroll contentContainerStyle={styles.content}>
@@ -180,7 +232,7 @@ export default function PickupTimerScreen() {
       <PrimaryButton
         label="Confirm Pickup"
         onPress={() => void handleConfirmPickup()}
-        disabled={actionBusy}
+        disabled={actionBusy || isSurplusLoading}
       />
       <SecondaryButton
         label="Release claim"

@@ -55,14 +55,18 @@ export async function claimSurplus(
     newRemaining === 0 ? 'claimed' : surplus.status;
 
   const publicClaimId = generatePublicClaimId();
-  const now = new Date().toISOString();
+  const nowDate = new Date();
+  const now = nowDate.toISOString();
+  const expiresAt = new Date(nowDate.getTime() + 30 * 60 * 1000).toISOString();
 
   const record: ClaimRecord = {
     id: `claim-${Date.now()}`,
     surplusId,
     servingsClaimed,
     status: 'reserved',
+    userId: mockDb.currentUser.id,
     claimId: publicClaimId,
+    expiresAt,
     createdAt: now,
     updatedAt: now,
   };
@@ -74,8 +78,13 @@ export async function claimSurplus(
     claimId: publicClaimId,
   };
 
-  mockDb.claims.push(record);
+  mockDb.claims = [...mockDb.claims, record];
   return ok(record);
+}
+
+export async function getMyClaims(): Promise<ApiResponse<ClaimRecord[]>> {
+  await mockDelay();
+  return ok(mockDb.claims.map((claim) => ({ ...claim })));
 }
 
 export async function confirmClaim(
@@ -93,6 +102,7 @@ export async function confirmClaim(
   const updated: ClaimRecord = {
     ...existing,
     status: 'confirmed',
+    confirmedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
   mockDb.claims[index] = updated;
@@ -119,6 +129,7 @@ export async function releaseClaim(
   const updated: ClaimRecord = {
     ...existing,
     status: 'released',
+    releasedAt: updatedAt,
     updatedAt,
   };
   mockDb.claims[index] = updated;
@@ -147,6 +158,7 @@ export async function releaseClaim(
 }
 
 export const claimsHandlers = {
+  getMyClaims,
   claimSurplus,
   confirmClaim,
   releaseClaim,
