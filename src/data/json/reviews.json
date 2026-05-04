@@ -1,0 +1,20 @@
+[
+  {
+    "id": "review-1",
+    "score": 5,
+    "author": "Maya R.",
+    "comment": "Brisket was incredible — bark, smoke, all of it. Hosts made us feel like family even though we’d never met."
+  },
+  {
+    "id": "review-2",
+    "score": 5,
+    "author": "Chris L.",
+    "comment": "Easy to find in Lot B, line moved fast, and the mac was unreal. Atmosphere was pure gameday."
+  },
+  {
+    "id": "review-3",
+    "score": 4,
+    "author": "Priya N.",
+    "comment": "Great veggie options and compostable plates. Would love a second drink station next time."
+  }
+]

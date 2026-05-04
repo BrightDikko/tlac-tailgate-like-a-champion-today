@@ -1,0 +1,13 @@
+{
+  "id": "tlac-user-001",
+  "firstName": "Bright",
+  "lastName": "Dikko",
+  "role": "student",
+  "displayName": "Bright Dikko",
+  "affiliationLabel": "Student / Fan · Computer Science",
+  "avatarInitials": "BD",
+  "avatarImageKey": "user-bright-dikko",
+  "pickupStreak": 4,
+  "savedTailgateIds": ["event-1", "event-2", "event-5"],
+  "claimedSurplusIds": ["surplus-1"]
+}

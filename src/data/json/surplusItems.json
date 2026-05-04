@@ -1,0 +1,46 @@
+[
+  {
+    "id": "surplus-1",
+    "foodName": "Pulled pork sliders",
+    "groupName": "Domer Grill Crew",
+    "location": "Stadium Lot B, Section 4 — navy canopy",
+    "servingsRemaining": 12,
+    "minutesLeft": 29,
+    "status": "available",
+    "pickupNote": "Blue tent beside the grill station; ask for TLAC pickup",
+    "claimId": "TLAC-4821"
+  },
+  {
+    "id": "surplus-2",
+    "foodName": "Four-cheese mac tray",
+    "groupName": "Domer Grill Crew",
+    "location": "Stadium Lot B, Section 4 — navy canopy",
+    "servingsRemaining": 8,
+    "minutesLeft": 29,
+    "status": "almost_gone",
+    "pickupNote": "Pickup table on the right under the string lights",
+    "imageKey": "four-cheese-mac"
+  },
+  {
+    "id": "surplus-3",
+    "foodName": "Fudge brownies",
+    "groupName": "Gold Lot BBQ & Smoke",
+    "location": "Gold Lot, Row C — gold-striped pop-up",
+    "servingsRemaining": 20,
+    "minutesLeft": 18,
+    "status": "available",
+    "pickupNote": "Near the blue banner by the cooler station",
+    "imageKey": "fudge-brownies"
+  },
+  {
+    "id": "surplus-4",
+    "foodName": "Roasted veggie tacos (6)",
+    "groupName": "Touchdown Taco Cantina",
+    "location": "Joyce Center lot, Row 2",
+    "servingsRemaining": 15,
+    "minutesLeft": 42,
+    "status": "available",
+    "pickupNote": "Papel picado table — say you claimed on TLAC",
+    "imageKey": "roasted-veggie-tacos"
+  }
+]

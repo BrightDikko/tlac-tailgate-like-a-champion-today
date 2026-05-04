@@ -1,0 +1,91 @@
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { AppHeader, Card, Screen, SectionHeader, SurplusCard } from '@/src/components';
+import { currentGame, surplusItems } from '@/src/data/demoData';
+import { colors } from '@/src/theme/colors';
+import { spacing } from '@/src/theme/spacing';
+import { typography } from '@/src/theme/typography';
+
+export default function SurplusTabScreen() {
+  const goToPickup = () => {
+    router.push('/student/pickup-timer');
+  };
+
+  return (
+    <Screen scroll safeAreaEdges={['top', 'left', 'right']} contentContainerStyle={styles.content}>
+      <AppHeader
+        title="Surplus"
+        subtitle="Reserve servings · timed pickup windows"
+        rightAction={
+          <Pressable accessibilityRole="button" hitSlop={12} style={styles.iconHit}>
+            <Ionicons name="funnel-outline" size={22} color={colors.text} />
+          </Pressable>
+        }
+      />
+
+      <SectionHeader
+        title="Available near campus"
+        subtitle="Post-game pickup windows stay open for a limited time."
+      />
+
+      <Card variant="soft">
+        <Text style={styles.contextLabel}>{currentGame.matchup}</Text>
+        <Text style={styles.contextTitle}>Surplus pickup phase</Text>
+        <Text style={styles.contextCopy}>
+          Claimed servings are held for 30 minutes so hosts can plan handoffs.
+        </Text>
+      </Card>
+
+      <Text style={styles.helperCopy}>
+        Claiming below reserves 2 servings of Pulled Pork Sliders for your pickup timer.
+      </Text>
+
+      <View style={styles.list}>
+        {surplusItems.map((item) => (
+          <SurplusCard key={item.id} item={item} onClaimPress={goToPickup} />
+        ))}
+      </View>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  content: {
+    gap: spacing.xl,
+    paddingBottom: spacing.xxl,
+  },
+  iconHit: {
+    justifyContent: 'center',
+    minHeight: 44,
+    minWidth: 44,
+    alignItems: 'flex-end',
+  },
+  contextLabel: {
+    color: colors.goldLight,
+    fontSize: typography.caption,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  contextTitle: {
+    marginTop: spacing.xs,
+    color: colors.text,
+    fontSize: typography.subheading,
+    fontWeight: '800',
+  },
+  contextCopy: {
+    marginTop: spacing.sm,
+    color: colors.muted,
+    fontSize: typography.body,
+  },
+  helperCopy: {
+    color: colors.goldLight,
+    fontSize: typography.caption,
+    fontWeight: '700',
+  },
+  list: {
+    gap: spacing.md,
+  },
+});

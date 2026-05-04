@@ -1,0 +1,83 @@
+[
+  {
+    "id": "center-1",
+    "name": "Cultivate Food Rescue",
+    "address": "1400 W Western Ave, South Bend, IN",
+    "distance": "1.8 mi",
+    "acceptsPreparedFood": true,
+    "openStatus": "Open for scheduled drop-off until 8 PM",
+    "phone": "(574) 555-0148",
+    "description": "Featured local partner coordinating safe surplus handoff from gameday hosts to neighborhood meal programs.",
+    "imageKey": "notre-dame-stadium",
+    "policyNotes": [
+      "Prepared items should be held above 140F or below 41F before drop-off.",
+      "Label each pan with item name and approximate prep time.",
+      "No partially served trays from guest-facing tables."
+    ],
+    "hours": [
+      "Game days: 11:00 AM – 8:00 PM",
+      "Sunday prep recovery: 10:00 AM – 4:00 PM"
+    ],
+    "dropoffInstructions": "Use the west loading entry and mention TLAC host donation check-in at the desk.",
+    "impactLabel": "Featured verified center"
+  },
+  {
+    "id": "center-2",
+    "name": "St. Vincent Community Kitchen",
+    "address": "402 W Washington St, South Bend, IN",
+    "distance": "2.4 mi",
+    "acceptsPreparedFood": true,
+    "openStatus": "Accepting evening drop-offs post-game",
+    "phone": "(574) 555-0192",
+    "description": "Community kitchen partner offering same-evening redistribution for safely handled tailgate trays.",
+    "policyNotes": [
+      "Call ahead for large pan donations over 20 servings.",
+      "Use covered disposable containers for quick intake."
+    ],
+    "hours": [
+      "Monday - Friday: 12:00 PM – 7:00 PM",
+      "Game day extension: until 9:00 PM"
+    ],
+    "dropoffInstructions": "Drop-off table is beside the north entrance volunteer check station.",
+    "impactLabel": "Evening intake partner"
+  },
+  {
+    "id": "center-3",
+    "name": "River Bend Family Pantry",
+    "address": "1825 E Mishawaka Ave, Mishawaka, IN",
+    "distance": "3.1 mi",
+    "acceptsPreparedFood": false,
+    "openStatus": "Dry goods and produce today",
+    "phone": "(574) 555-0160",
+    "description": "Pantry partner focused on shelf-stable and produce donations after game weekends.",
+    "policyNotes": [
+      "Prepared hot foods are not accepted at this location.",
+      "Sealed pantry boxes and produce only."
+    ],
+    "hours": [
+      "Tuesday - Saturday: 9:00 AM – 5:00 PM"
+    ],
+    "dropoffInstructions": "Use the side pantry door with labeled boxes ready for sorting.",
+    "impactLabel": "Shelf-stable support"
+  },
+  {
+    "id": "center-4",
+    "name": "Howard Park Community Fridge",
+    "address": "S Saint Joseph St, South Bend, IN",
+    "distance": "2.0 mi",
+    "acceptsPreparedFood": true,
+    "openStatus": "24/7 outdoor fridge — label all donations",
+    "phone": "(574) 555-0204",
+    "description": "Neighborhood fridge network with rapid handoff for sealed ready-to-share items.",
+    "policyNotes": [
+      "Each container must include date and ingredients.",
+      "Use sealed compostable clamshells for single servings."
+    ],
+    "hours": [
+      "Open daily: 24/7",
+      "Volunteer check windows: 8:00 AM and 6:00 PM"
+    ],
+    "dropoffInstructions": "Place labeled meals on the top shelf and text the volunteer line after drop-off.",
+    "impactLabel": "Community rapid response"
+  }
+]

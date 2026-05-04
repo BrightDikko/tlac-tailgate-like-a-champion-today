@@ -1,0 +1,163 @@
+[
+  {
+    "id": "food-1",
+    "tailgateId": "event-1",
+    "name": "Smoked brisket",
+    "category": "entree",
+    "description": "12-hour oak-smoked brisket with house campus sauce and pickled onions",
+    "quantityPrepared": 72,
+    "imageKey": "smoked-brisket"
+  },
+  {
+    "id": "food-2",
+    "tailgateId": "event-1",
+    "name": "Domer smashburgers",
+    "category": "entree",
+    "description": "Two smash patties, American cheese, shaved onion, potato bun",
+    "quantityPrepared": 90,
+    "imageKey": "domer-smashburgers"
+  },
+  {
+    "id": "food-3",
+    "tailgateId": "event-1",
+    "name": "Four-cheese mac",
+    "category": "side",
+    "description": "Baked mac with cheddar, gouda, parmesan, crispy panko top",
+    "quantityPrepared": 48,
+    "imageKey": "four-cheese-mac"
+  },
+  {
+    "id": "food-4",
+    "tailgateId": "event-1",
+    "name": "Stadium brats",
+    "category": "entree",
+    "description": "Grilled bratwurst, stadium mustard, sauerkraut, grilled onions",
+    "quantityPrepared": 85,
+    "imageKey": "stadium-brats"
+  },
+  {
+    "id": "food-5",
+    "tailgateId": "event-1",
+    "name": "Blue & gold cupcakes",
+    "category": "dessert",
+    "description": "Vanilla cupcakes, buttercream, ND sprinkles",
+    "quantityPrepared": 64,
+    "imageKey": "blue-gold-cupcakes"
+  },
+  {
+    "id": "food-6",
+    "tailgateId": "event-1",
+    "name": "Lemonade & iced tea",
+    "category": "drink",
+    "description": "Self-serve drink station with cups and ice",
+    "quantityPrepared": 120,
+    "imageKey": "lemonade-and-iced-tea"
+  },
+  {
+    "id": "food-7",
+    "tailgateId": "event-2",
+    "name": "St. Louis ribs",
+    "category": "entree",
+    "description": "Dry-rubbed, glazed, fall-off-the-bone ribs",
+    "quantityPrepared": 58
+  },
+  {
+    "id": "food-8",
+    "tailgateId": "event-2",
+    "name": "Smoked wings",
+    "category": "entree",
+    "description": "Half flats, Alabama white sauce on the side",
+    "quantityPrepared": 70,
+    "imageKey": "smoked-wings"
+  },
+  {
+    "id": "food-9",
+    "tailgateId": "event-2",
+    "name": "Honey butter cornbread",
+    "category": "side",
+    "description": "Cast-iron squares, warm from the smoker",
+    "quantityPrepared": 40
+  },
+  {
+    "id": "food-10",
+    "tailgateId": "event-2",
+    "name": "Fudge brownies",
+    "category": "dessert",
+    "description": "Walnut-studded squares for the walk to the gate",
+    "quantityPrepared": 36,
+    "imageKey": "fudge-brownies"
+  },
+  {
+    "id": "food-11",
+    "tailgateId": "event-3",
+    "name": "Garden grain bowls",
+    "category": "side",
+    "description": "Farro, roasted squash, kale, lemon-tahini dressing",
+    "quantityPrepared": 44
+  },
+  {
+    "id": "food-12",
+    "tailgateId": "event-3",
+    "name": "Crispy cauliflower bites",
+    "category": "entree",
+    "description": "Buffalo-style bake, vegan ranch drizzle",
+    "quantityPrepared": 38
+  },
+  {
+    "id": "food-13",
+    "tailgateId": "event-4",
+    "name": "All-beef stadium dogs",
+    "category": "entree",
+    "description": "Natural-casing dogs, steamed buns, relish tray",
+    "quantityPrepared": 100
+  },
+  {
+    "id": "food-14",
+    "tailgateId": "event-4",
+    "name": "Cincinnati chili",
+    "category": "entree",
+    "description": "Three-way style with cheddar and onions (optional)",
+    "quantityPrepared": 55
+  },
+  {
+    "id": "food-15",
+    "tailgateId": "event-4",
+    "name": "Apple cider",
+    "category": "drink",
+    "description": "Michigan apples, warm spice cups",
+    "quantityPrepared": 60
+  },
+  {
+    "id": "food-16",
+    "tailgateId": "event-5",
+    "name": "Carne asada tacos",
+    "category": "entree",
+    "description": "Corn tortillas, charred skirt steak, cilantro, lime",
+    "quantityPrepared": 95
+  },
+  {
+    "id": "food-17",
+    "tailgateId": "event-5",
+    "name": "Roasted veggie tacos",
+    "category": "entree",
+    "description": "Poblano, mushroom, cotija, salsa verde",
+    "quantityPrepared": 52,
+    "imageKey": "roasted-veggie-tacos"
+  },
+  {
+    "id": "food-18",
+    "tailgateId": "event-5",
+    "name": "Chips & fire-roasted salsa",
+    "category": "side",
+    "description": "House chips, two salsas, pickled jalapeños",
+    "quantityPrepared": 70
+  },
+  {
+    "id": "food-19",
+    "tailgateId": "event-5",
+    "name": "Horchata",
+    "category": "drink",
+    "description": "Cinnamon rice drink, iced pitchers",
+    "quantityPrepared": 45
+  }
+]
