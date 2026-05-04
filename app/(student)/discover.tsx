@@ -232,7 +232,7 @@ function resultsSectionCopy(
   if (filter === 'near_me') {
     return {
       title: 'Results near you',
-      subtitle: 'Walking distance from campus — closest tailgates first.',
+      subtitle: 'Walking distance from campus. Closest tailgates first.',
     };
   }
   if (filter === 'trending') {
@@ -247,7 +247,7 @@ function resultsSectionCopy(
     title: 'Matching tailgates',
     subtitle: hasQuery
       ? 'Hosts, menus, lots, and tags that match what you typed.'
-      : 'Filtered for this gameday — refine with search anytime.',
+      : 'Filtered for this gameday. Refine with search anytime.',
   };
 }
 

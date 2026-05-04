@@ -165,7 +165,7 @@
     "tailgateId": "event-bright-1",
     "name": "Domer smashburgers",
     "category": "entree",
-    "description": "Two smash patties, American cheese, shaved onion, potato bun — grilled to order in small batches",
+    "description": "Two smash patties, American cheese, shaved onion, potato bun. Grilled to order in small batches.",
     "quantityPrepared": 36,
     "imageKey": "domer-smashburgers"
   },
@@ -192,7 +192,7 @@
     "tailgateId": "event-bright-1",
     "name": "Lemonade & iced tea",
     "category": "drink",
-    "description": "Self-serve pitchers, cups, and ice — refill friendly",
+    "description": "Self-serve pitchers, cups, and ice. Refill friendly.",
     "quantityPrepared": 50,
     "imageKey": "lemonade-and-iced-tea"
   },
@@ -228,7 +228,7 @@
     "tailgateId": "event-bright-2",
     "name": "Blue & gold cupcakes",
     "category": "dessert",
-    "description": "Vanilla cupcakes, buttercream, ND sprinkles — limited batch per quarter",
+    "description": "Vanilla cupcakes, buttercream, ND sprinkles. Limited batch per quarter.",
     "quantityPrepared": 24,
     "imageKey": "blue-gold-cupcakes"
   },

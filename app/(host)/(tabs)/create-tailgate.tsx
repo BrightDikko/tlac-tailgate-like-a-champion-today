@@ -445,7 +445,7 @@ export default function CreateTailgateScreen() {
 
       <SectionHeader
         title="Menu items"
-        subtitle="Optional — add dishes now or later from the tailgate manage screen."
+        subtitle="Optional: add dishes now or later from the tailgate manage screen."
       />
       <Text style={styles.summaryLine}>
         {draftMenuItems.length} menu item(s) will be added after the tailgate is created.

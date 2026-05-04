@@ -12,7 +12,7 @@ import { categoryLabel } from '@/src/utils/donationCategories';
 import { paramOne } from '@/src/utils/routeParams';
 
 function formatWhen(iso: string | undefined): string {
-  if (iso === undefined || iso === '') return '—';
+  if (iso === undefined || iso === '') return 'Not recorded yet';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
   return d.toLocaleString();
@@ -61,9 +61,10 @@ export default function DonationSuccessScreen() {
       ? String(donation.approximateWeightLbs)
       : weightParam !== undefined && weightParam !== ''
         ? weightParam
-        : '—';
+        : '';
 
-  const centerName = center?.name ?? centerNameParam ?? (centerIdForQuery !== '' ? 'Donation center' : '—');
+  const centerName =
+    center?.name ?? centerNameParam ?? (centerIdForQuery !== '' ? 'Donation center' : 'Not specified');
   const donationCategoryLabel =
     donation?.donationCategory !== undefined
       ? categoryLabel(donation.donationCategory)
@@ -125,7 +126,7 @@ export default function DonationSuccessScreen() {
         <Card accentColor={colors.green}>
           <Text style={styles.summaryTitle}>Donation summary</Text>
           <Text style={styles.summaryLine}>
-            {weightDisplay === '—' ? 'Approximate weight unavailable' : `${weightDisplay} lbs saved`}
+            {!weightDisplay ? 'Approximate weight unavailable' : `${weightDisplay} lbs saved`}
           </Text>
           {donationCategoryLabel ? (
             <Text style={styles.summaryLine}>Category: {donationCategoryLabel}</Text>

@@ -30,7 +30,7 @@ export default function PickupSuccessScreen() {
   const servingsCount =
     Number.isFinite(parsedServings) && parsedServings > 0 ? parsedServings : 2;
 
-  const displayClaimId = claimIdParam && claimIdParam.length > 0 ? claimIdParam : '—';
+  const displayClaimId = claimIdParam && claimIdParam.length > 0 ? claimIdParam : undefined;
   const displayGroup = groupNameParam && groupNameParam.length > 0 ? groupNameParam : 'Host listing';
 
   const subtitleServings = `${servingsCount} serving${servingsCount === 1 ? '' : 's'}`;
@@ -60,7 +60,7 @@ export default function PickupSuccessScreen() {
         <Text style={styles.summaryLine}>
           {servingsCount} serving{servingsCount === 1 ? '' : 's'} saved
         </Text>
-        <Text style={styles.summaryLine}>Claim ID {displayClaimId}</Text>
+        {displayClaimId ? <Text style={styles.summaryLine}>Claim ID {displayClaimId}</Text> : null}
         <Text style={styles.summaryLine}>{displayGroup}</Text>
         {foodNameParam && foodNameParam.length > 0 ? (
           <Text style={styles.summaryLine}>{foodNameParam}</Text>

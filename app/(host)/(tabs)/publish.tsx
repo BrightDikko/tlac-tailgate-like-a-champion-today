@@ -313,7 +313,11 @@ export default function HostPublishTabScreen() {
     menuLoading;
 
   const notePreview =
-    pickupNote.trim() === '' ? '—' : pickupNote.trim().length > 80 ? `${pickupNote.trim().slice(0, 80)}…` : pickupNote.trim();
+    pickupNote.trim() === ''
+      ? 'No pickup note yet'
+      : pickupNote.trim().length > 80
+        ? `${pickupNote.trim().slice(0, 80)}…`
+        : pickupNote.trim();
 
   return (
     <Screen scroll safeAreaEdges={['top', 'left', 'right']} contentContainerStyle={styles.content}>
@@ -621,7 +625,9 @@ export default function HostPublishTabScreen() {
 
               <Card variant="soft" style={styles.noteCard}>
                 <Text style={styles.noteCardKicker}>Pickup note</Text>
-                <Text style={styles.noteCardHint}>Visible to neighbors — be specific about tent color, row, or flag.</Text>
+                <Text style={styles.noteCardHint}>
+                  Neighbors see this note. Be specific about tent color, row, or flag.
+                </Text>
                 <TextInput
                   value={pickupNote}
                   onChangeText={setPickupNote}

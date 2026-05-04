@@ -72,7 +72,7 @@ export default function NearMeTabScreen() {
             onPress={() => router.push('/discover')}
             style={styles.iconHit}
           >
-            <Ionicons name="compass-outline" size={22} color={colors.text} />
+            <Ionicons name="compass-outline" size={34} color={colors.text} />
           </Pressable>
         }
       />
@@ -85,8 +85,8 @@ export default function NearMeTabScreen() {
             <View style={styles.mapHeaderText}>
               <Text style={styles.mapTitle}>Stadium lots & quads</Text>
               <Text style={styles.mapBody}>
-                You are browsing the gameday footprint around {currentGame?.location ?? 'campus'}. Distances are
-                estimates for this build.
+                You are browsing the gameday footprint around {currentGame?.location ?? 'campus'}. Distances update as
+                you browse nearby tailgates.
               </Text>
             </View>
           </View>
@@ -108,7 +108,7 @@ export default function NearMeTabScreen() {
         <>
           <SectionHeader
             title="Results near you"
-            subtitle="Closest tailgates first — same cards as Discover."
+            subtitle="Closest tailgates first. Same cards as Discover."
           />
 
           <View style={styles.list}>
@@ -135,8 +135,7 @@ export default function NearMeTabScreen() {
             <Card style={styles.tipCard} accentColor={colors.gold}>
               <Text style={styles.tipTitle}>Nearest pick</Text>
               <Text style={styles.tipBody}>
-                {anchor.groupName} is about {anchor.distance} away — open a card for full menu and host
-                details.
+                {anchor.groupName} is about {anchor.distance} away. Open a card for the full menu and host details.
               </Text>
             </Card>
           ) : null}

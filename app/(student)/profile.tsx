@@ -110,7 +110,7 @@ export default function ProfileTabScreen() {
             {impactLoading ? (
               <ActivityIndicator size="small" color={colors.goldLight} />
             ) : (
-              <Text style={styles.statValue}>{servingsDisplay ?? '—'}</Text>
+              <Text style={styles.statValue}>{servingsDisplay ?? 0}</Text>
             )}
             <Text style={styles.statLabel}>Servings claimed</Text>
           </View>
@@ -135,7 +135,7 @@ export default function ProfileTabScreen() {
           {impactLoading ? (
             <ActivityIndicator size="small" color={colors.goldLight} />
           ) : (
-            <Text style={styles.rowValue}>{wasteDisplay ?? '—'}%</Text>
+            <Text style={styles.rowValue}>{wasteDisplay ?? 0}%</Text>
           )}
         </View>
       </Card>

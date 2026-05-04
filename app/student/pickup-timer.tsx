@@ -141,11 +141,11 @@ export default function PickupTimerScreen() {
     <Card variant="soft">
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>Claim ID</Text>
-        <Text style={styles.detailValue}>{resolvedClaimId || activeClaim?.id || '—'}</Text>
+        <Text style={styles.detailValue}>{resolvedClaimId || activeClaim?.id || 'Not available'}</Text>
       </View>
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>Food item</Text>
-        <Text style={styles.detailValue}>{surplusItem?.foodName ?? '—'}</Text>
+        <Text style={styles.detailValue}>{surplusItem?.foodName ?? 'Not available'}</Text>
       </View>
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>Quantity</Text>
@@ -155,11 +155,11 @@ export default function PickupTimerScreen() {
       </View>
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>Location</Text>
-        <Text style={styles.detailValue}>{surplusItem?.location ?? '—'}</Text>
+        <Text style={styles.detailValue}>{surplusItem?.location ?? 'Not available'}</Text>
       </View>
       <View style={styles.detailRow}>
         <Text style={styles.detailLabel}>Pickup note</Text>
-        <Text style={styles.detailValue}>{surplusItem?.pickupNote ?? '—'}</Text>
+        <Text style={styles.detailValue}>{surplusItem?.pickupNote ?? 'Not available'}</Text>
       </View>
     </Card>
   );

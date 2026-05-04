@@ -10,7 +10,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingTop: 8,
     paddingBottom: Platform.OS === 'ios' ? 24 : 12,
-    /** Let content + safe area define height — fixed heights misalign across devices. */
+    /** Let content + safe area define height; fixed heights misalign across devices. */
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.22,

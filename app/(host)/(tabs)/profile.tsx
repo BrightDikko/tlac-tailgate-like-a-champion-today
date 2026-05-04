@@ -191,7 +191,9 @@ export default function HostProfileTabScreen() {
                   <Text style={styles.rowSub}>Pounds routed through TLAC donation pathways</Text>
                 </View>
               </View>
-              <Text style={styles.rowValue}>{impact?.poundsDonated ?? '—'} lbs</Text>
+              <Text style={styles.rowValue}>
+                {impact?.poundsDonated !== undefined ? `${impact.poundsDonated} lbs` : 'Not available'}
+              </Text>
             </View>
           </Card>
 
