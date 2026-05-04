@@ -1,3 +1,5 @@
+import type { ClaimRecord } from '@/src/types';
+
 import {
     currentGame,
     currentUser,
@@ -13,6 +15,7 @@ export const mockDb = {
     currentGame,
     currentUser,
     donationCenters: [...donationCenters],
+    claims: [] as ClaimRecord[],
     impact,
     menuItems: [...menuItems],
     reviews: [...reviews],
