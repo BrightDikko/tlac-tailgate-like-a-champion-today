@@ -4,3 +4,8 @@ export type DonationInput = {
   approximateWeightLbs: number;
   notes?: string;
 };
+
+export type DonationRecord = DonationInput & {
+  id: string;
+  createdAt: string;
+};

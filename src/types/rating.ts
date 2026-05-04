@@ -3,3 +3,9 @@ export type RatingInput = {
   score: number;
   comment?: string;
 };
+
+export type RatingRecord = RatingInput & {
+  id: string;
+  author?: string;
+  createdAt?: string;
+};
