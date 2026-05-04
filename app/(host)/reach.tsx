@@ -1,8 +1,8 @@
 import { router } from 'expo-router';
-import { StyleSheet, Text } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { useGetCurrentGameQuery } from '@/src/api/endpoints/gamesApi';
 import { Card, HostBrandedHeader, PrimaryButton, Screen, SecondaryButton, SectionHeader } from '@/src/components';
-import { currentGame } from '@/src/data/demoData';
 import type { GamePhase } from '@/src/types';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
@@ -12,15 +12,47 @@ function phaseLabel(phase: GamePhase) {
   return phase === 'postgame' ? 'Post-game' : 'Pregame';
 }
 
+function reachErrorMessage(err: unknown): string {
+  if (err && typeof err === 'object' && 'data' in err) {
+    const d = (err as { data: unknown }).data;
+    if (d && typeof d === 'object' && d !== null && 'message' in d) {
+      return String((d as { message: string }).message);
+    }
+  }
+  if (err && typeof err === 'object' && 'message' in err) {
+    return String((err as { message: string }).message);
+  }
+  return 'Could not load game context.';
+}
+
 export default function HostReachTabScreen() {
+  const { data: currentGame, isLoading, isError, error, refetch } = useGetCurrentGameQuery();
+
+  const headerSubtitle = currentGame
+    ? `Host · ${phaseLabel(currentGame.phase)} · ${currentGame.matchup}`
+    : isLoading
+      ? 'Host · Loading gameday…'
+      : 'Host · Gameday';
+
   return (
     <Screen scroll safeAreaEdges={['top', 'left', 'right']} contentContainerStyle={styles.content}>
-      <HostBrandedHeader
-        subtitle={`Host · ${phaseLabel(currentGame.phase)} · ${currentGame.matchup}`}
-      />
+      <HostBrandedHeader subtitle={headerSubtitle} />
 
       <Text style={styles.screenLead}>Reach</Text>
       <Text style={styles.screenLeadMuted}>See the Student / Fan experience around your surplus.</Text>
+
+      {isLoading ? (
+        <Card variant="soft">
+          <View style={styles.loadingBlock}>
+            <ActivityIndicator size="large" color={colors.goldLight} accessibilityLabel="Loading game context" />
+          </View>
+        </Card>
+      ) : isError ? (
+        <Card variant="soft" accentColor={colors.navy}>
+          <Text style={styles.errorText}>{reachErrorMessage(error)}</Text>
+          <SecondaryButton label="Try again" onPress={() => void refetch()} style={styles.retryButton} />
+        </Card>
+      ) : null}
 
       <SectionHeader
         title="Student / Fan view"
@@ -85,5 +117,19 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.body,
     lineHeight: 24,
+  },
+  loadingBlock: {
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 100,
+  },
+  errorText: {
+    color: colors.muted,
+    fontSize: typography.body,
+    lineHeight: 22,
+  },
+  retryButton: {
+    marginTop: spacing.md,
   },
 });
