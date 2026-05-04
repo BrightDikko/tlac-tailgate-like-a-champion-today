@@ -46,18 +46,20 @@ export function HostBrandedHeader({ subtitle, rightAction }: HostBrandedHeaderPr
       rightAction={
         rightAction ?? (
           <Pressable accessibilityRole="button" hitSlop={12} style={styles.iconHit}>
-            {avatarSource ? (
-              <Image
-                source={avatarSource}
-                resizeMode="cover"
-                style={styles.headerAvatarImage}
-                accessibilityLabel={`${currentUser?.displayName ?? 'Host'} avatar`}
-              />
-            ) : (
-              <View style={styles.headerAvatarFallback}>
-                <Text style={styles.headerAvatarInitials}>{initials}</Text>
-              </View>
-            )}
+            <View style={styles.avatarRing}>
+              {avatarSource ? (
+                <Image
+                  source={avatarSource}
+                  resizeMode="cover"
+                  style={styles.headerAvatarImage}
+                  accessibilityLabel={`${currentUser?.displayName ?? 'Host'} avatar`}
+                />
+              ) : (
+                <View style={styles.headerAvatarFallback}>
+                  <Text style={styles.headerAvatarInitials}>{initials}</Text>
+                </View>
+              )}
+            </View>
           </Pressable>
         )
       }
@@ -70,29 +72,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 44,
     minWidth: 44,
-    alignItems: 'flex-end',
+    alignItems: 'center',
   },
-  headerAvatarImage: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: colors.gold,
-    backgroundColor: colors.surfaceSoft,
-  },
-  headerAvatarFallback: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  avatarRing: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     borderWidth: 2,
     borderColor: colors.gold,
     backgroundColor: colors.surfaceSoft,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  headerAvatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  headerAvatarFallback: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceSoft,
   },
   headerAvatarInitials: {
     color: colors.text,
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '900',
     letterSpacing: 0.2,
   },

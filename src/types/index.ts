@@ -88,6 +88,8 @@ export type SurplusStatus = 'available' | 'almost_gone' | 'claimed' | 'expired' 
 
 export interface SurplusItem {
   id: string;
+  tailgateId: string;
+  foodItemId?: string;
   foodName: string;
   groupName: string;
   location: string;
@@ -97,6 +99,8 @@ export interface SurplusItem {
   pickupNote: string;
   claimId?: string;
   imageKey?: string;
+  createdAt?: string;
+  expiresAt?: string;
 }
 
 export interface Review {

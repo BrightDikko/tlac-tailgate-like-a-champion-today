@@ -13,10 +13,6 @@ import { mockDelay } from '@/src/mocks/mockDelay';
 import { paginate } from '@/src/mocks/mockPagination';
 import { fail, ok } from '@/src/mocks/mockResponse';
 
-function findTailgateGroupName(tailgateId: string): string | undefined {
-  return mockDb.tailgates.find((t) => t.id === tailgateId)?.groupName;
-}
-
 function applySurplusFilters(
   items: SurplusItem[],
   params?: SurplusQueryParams
@@ -28,14 +24,14 @@ function applySurplusFilters(
   }
 
   if (params?.tailgateId !== undefined) {
-    const groupName = findTailgateGroupName(params.tailgateId);
-    if (groupName === undefined) {
-      return [];
-    }
-    result = result.filter((item) => item.groupName === groupName);
+    result = result.filter((item) => item.tailgateId === params.tailgateId);
   }
 
   return result;
+}
+
+function newSurplusId(): string {
+  return `surplus-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
 export async function getSurplus(
@@ -59,11 +55,14 @@ export async function getSurplusById(
 
 export async function createSurplus(
   input: CreateSurplusInput
-): Promise<ApiResponse<SurplusItem>> {
+): Promise<ApiResponse<SurplusItem> | ApiError> {
   await mockDelay();
+  if (typeof input.tailgateId !== 'string' || input.tailgateId.trim() === '') {
+    return fail('tailgateId is required', 'BAD_REQUEST', { tailgateId: 'Must be a non-empty tailgate id' });
+  }
   const created: SurplusItem = {
     ...input,
-    id: `surplus-${Date.now()}`,
+    id: newSurplusId(),
   };
   mockDb.surplusItems.push(created);
   return ok(created);

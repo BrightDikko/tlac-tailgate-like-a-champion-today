@@ -99,8 +99,8 @@ export const surplusApi = baseApi.injectEndpoints({
     createSurplus: builder.mutation<SurplusItem, CreateSurplusInput>({
       queryFn: async (body, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
-          const res = await surplusHandlers.createSurplus(body);
-          return { data: res.data };
+          const result = await surplusHandlers.createSurplus(body);
+          return fromApiResult(result);
         }
         return asRemoteItem(
           await baseQuery({
