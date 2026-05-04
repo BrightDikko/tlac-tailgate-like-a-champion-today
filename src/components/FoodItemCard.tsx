@@ -19,6 +19,11 @@ import { StatusChip } from './StatusChip';
 
 type FoodItemCardStatus = TailgateStatus | SurplusStatus;
 
+function sentenceCase(value: string): string {
+  if (value.length === 0) return value;
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 interface FoodItemCardProps {
   item: FoodItem;
   status?: FoodItemCardStatus;
@@ -46,7 +51,7 @@ export function FoodItemCard({
         )}
         <View style={styles.titleWrap}>
           <Text style={styles.name}>{item.name}</Text>
-          <Text style={styles.category}>{item.category}</Text>
+          <Text style={styles.category}>{sentenceCase(item.category)}</Text>
         </View>
         {status ? <StatusChip status={status} showDot={false} /> : null}
       </View>
@@ -94,7 +99,6 @@ const styles = StyleSheet.create({
     color: colors.goldLight,
     fontSize: typography.caption,
     fontWeight: '700',
-    textTransform: 'capitalize',
   },
   description: {
     marginTop: spacing.md,

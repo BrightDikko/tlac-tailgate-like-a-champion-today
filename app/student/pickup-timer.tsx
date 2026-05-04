@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
+import { useConfirmClaimMutation, useReleaseClaimMutation } from '@/src/api/endpoints/claimsApi';
 import { useGetSurplusByIdQuery } from '@/src/api/endpoints/surplusApi';
 import { Card, PrimaryButton, Screen, SecondaryButton, SectionHeader } from '@/src/components';
 import { surplusItems } from '@/src/data/demoData';
@@ -36,8 +37,16 @@ export default function PickupTimerScreen() {
     servingsClaimed?: string;
   }>();
 
+  const claimRecordId = paramOne(params.claimRecordId);
   const surplusId = paramOne(params.surplusId);
   const shouldFetchSurplus = Boolean(surplusId);
+
+  const [
+    confirmClaim,
+    { isLoading: isConfirming, error: confirmError, reset: resetConfirmError },
+  ] = useConfirmClaimMutation();
+  const [releaseClaim, { isLoading: isReleasing, error: releaseError, reset: resetReleaseError }] =
+    useReleaseClaimMutation();
 
   const {
     data: surplusItem,
@@ -61,6 +70,46 @@ export default function PickupTimerScreen() {
     Number.isFinite(parsedServings) && parsedServings > 0 ? parsedServings : 2;
 
   const reservedItem = surplusItem ?? fallbackItem;
+
+  const actionBusy = isConfirming || isReleasing;
+
+  const handleConfirmPickup = async () => {
+    resetConfirmError();
+    if (claimRecordId && claimRecordId.length > 0) {
+      try {
+        await confirmClaim({ id: claimRecordId }).unwrap();
+        router.push({
+          pathname: '/student/pickup-success',
+          params: {
+            claimRecordId,
+            claimId: displayClaimId,
+            surplusId: surplusId ?? '',
+            servingsClaimed: String(servingsCount),
+            foodName: reservedItem.foodName,
+            groupName: reservedItem.groupName,
+          },
+        });
+      } catch {
+        // surfaced via confirmError
+      }
+      return;
+    }
+    router.push('/student/pickup-success');
+  };
+
+  const handleReleaseClaim = async () => {
+    resetReleaseError();
+    if (claimRecordId && claimRecordId.length > 0) {
+      try {
+        await releaseClaim({ id: claimRecordId }).unwrap();
+        router.push('/surplus');
+      } catch {
+        // surfaced via releaseError
+      }
+      return;
+    }
+    router.push('/surplus');
+  };
 
   const detailCard = shouldFetchSurplus && isSurplusLoading ? (
     <Card variant="soft">
@@ -117,9 +166,33 @@ export default function PickupTimerScreen() {
         </Text>
       </Card>
 
-      <PrimaryButton label="Confirm Pickup" onPress={() => router.push('/student/pickup-success')} />
-      <SecondaryButton label="Release claim" onPress={() => router.push('/surplus')} />
-      <SecondaryButton label="Back to surplus" size="md" onPress={() => router.push('/surplus')} />
+      {confirmError ? (
+        <Card variant="soft" accentColor={colors.navy}>
+          <Text style={styles.errorText}>{surplusErrorMessage(confirmError)}</Text>
+        </Card>
+      ) : null}
+      {releaseError ? (
+        <Card variant="soft" accentColor={colors.navy}>
+          <Text style={styles.errorText}>{surplusErrorMessage(releaseError)}</Text>
+        </Card>
+      ) : null}
+
+      <PrimaryButton
+        label="Confirm Pickup"
+        onPress={() => void handleConfirmPickup()}
+        disabled={actionBusy}
+      />
+      <SecondaryButton
+        label="Release claim"
+        onPress={() => void handleReleaseClaim()}
+        disabled={actionBusy}
+      />
+      <SecondaryButton
+        label="Back to surplus"
+        size="md"
+        onPress={() => router.push('/surplus')}
+        disabled={actionBusy}
+      />
     </Screen>
   );
 }

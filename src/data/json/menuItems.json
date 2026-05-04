@@ -159,5 +159,86 @@
     "category": "drink",
     "description": "Cinnamon rice drink, iced pitchers",
     "quantityPrepared": 45
+  },
+  {
+    "id": "food-20",
+    "tailgateId": "event-bright-1",
+    "name": "Domer smashburgers",
+    "category": "entree",
+    "description": "Two smash patties, American cheese, shaved onion, potato bun — grilled to order in small batches",
+    "quantityPrepared": 36,
+    "imageKey": "domer-smashburgers"
+  },
+  {
+    "id": "food-21",
+    "tailgateId": "event-bright-1",
+    "name": "Roasted veggie tacos",
+    "category": "entree",
+    "description": "Corn tortillas, poblanos, mushrooms, cotija, salsa verde (vegetarian)",
+    "quantityPrepared": 28,
+    "imageKey": "roasted-veggie-tacos"
+  },
+  {
+    "id": "food-22",
+    "tailgateId": "event-bright-1",
+    "name": "Four-cheese mac",
+    "category": "side",
+    "description": "Shareable tray with panko crunch; nut-free prep station",
+    "quantityPrepared": 22,
+    "imageKey": "four-cheese-mac"
+  },
+  {
+    "id": "food-23",
+    "tailgateId": "event-bright-1",
+    "name": "Lemonade & iced tea",
+    "category": "drink",
+    "description": "Self-serve pitchers, cups, and ice — refill friendly",
+    "quantityPrepared": 50,
+    "imageKey": "lemonade-and-iced-tea"
+  },
+  {
+    "id": "food-24",
+    "tailgateId": "event-bright-2",
+    "name": "Smoked brisket",
+    "category": "entree",
+    "description": "Oak-smoked flats and points, campus sauce, pickled onions on the side",
+    "quantityPrepared": 40,
+    "imageKey": "smoked-brisket"
+  },
+  {
+    "id": "food-25",
+    "tailgateId": "event-bright-2",
+    "name": "Smoked wings",
+    "category": "entree",
+    "description": "Half flats, Alabama white sauce, celery sticks",
+    "quantityPrepared": 64,
+    "imageKey": "smoked-wings"
+  },
+  {
+    "id": "food-26",
+    "tailgateId": "event-bright-2",
+    "name": "Stadium brats",
+    "category": "entree",
+    "description": "Natural-casing brats, stadium mustard, sauerkraut",
+    "quantityPrepared": 30,
+    "imageKey": "stadium-brats"
+  },
+  {
+    "id": "food-27",
+    "tailgateId": "event-bright-2",
+    "name": "Blue & gold cupcakes",
+    "category": "dessert",
+    "description": "Vanilla cupcakes, buttercream, ND sprinkles — limited batch per quarter",
+    "quantityPrepared": 24,
+    "imageKey": "blue-gold-cupcakes"
+  },
+  {
+    "id": "food-28",
+    "tailgateId": "event-bright-2",
+    "name": "Fudge brownies",
+    "category": "dessert",
+    "description": "Walnut-studded squares for the walk to the gate",
+    "quantityPrepared": 18,
+    "imageKey": "fudge-brownies"
   }
 ]

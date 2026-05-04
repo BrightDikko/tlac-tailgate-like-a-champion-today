@@ -8,23 +8,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.navy900,
     borderTopColor: colors.borderStrong,
     borderTopWidth: 1,
-    paddingTop: 6,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 10,
-    height: Platform.OS === 'ios' ? 88 : 64,
+    paddingTop: 8,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+    /** Let content + safe area define height — fixed heights misalign across devices. */
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 14,
-    elevation: 16,
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
+    elevation: 14,
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
-    letterSpacing: 0.2,
-    marginBottom: 2,
+    letterSpacing: 0.1,
+    marginTop: 2,
+    marginBottom: 0,
   },
   tabItem: {
     paddingTop: 4,
+    paddingBottom: 4,
   },
 });
 
@@ -36,4 +38,5 @@ export const appTabBarScreenOptions: BottomTabNavigationOptions = {
   tabBarStyle: styles.tabBar,
   tabBarLabelStyle: styles.tabLabel,
   tabBarItemStyle: styles.tabItem,
+  tabBarLabelPosition: 'below-icon',
 };

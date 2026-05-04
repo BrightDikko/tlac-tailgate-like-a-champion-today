@@ -402,8 +402,18 @@ export default function DiscoverTabScreen() {
                   menuItems={menuItems}
                   highlightLabel="Top pick"
                   heroTone="gold"
-                  onPress={() => router.push('/student/tailgate-detail')}
-                  onViewPress={() => router.push('/student/tailgate-detail')}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/student/tailgate-detail',
+                      params: { tailgateId: featuredBrowse.id },
+                    })
+                  }
+                  onViewPress={() =>
+                    router.push({
+                      pathname: '/student/tailgate-detail',
+                      params: { tailgateId: featuredBrowse.id },
+                    })
+                  }
                   viewLabel="View tailgate"
                 />
 
@@ -415,7 +425,12 @@ export default function DiscoverTabScreen() {
                       tailgate={tailgate}
                       menuItems={menuItems}
                       heroTone="navy"
-                      onViewPress={() => router.push('/student/tailgate-detail')}
+                      onViewPress={() =>
+                        router.push({
+                          pathname: '/student/tailgate-detail',
+                          params: { tailgateId: tailgate.id },
+                        })
+                      }
                       viewLabel="View tailgate"
                     />
                   ))}
@@ -440,7 +455,12 @@ export default function DiscoverTabScreen() {
                       index === 0 ? (searchQuery.trim() ? 'Top match' : 'Top pick') : undefined
                     }
                     heroTone={index === 0 ? 'gold' : 'navy'}
-                    onViewPress={() => router.push('/student/tailgate-detail')}
+                    onViewPress={() =>
+                      router.push({
+                        pathname: '/student/tailgate-detail',
+                        params: { tailgateId: tailgate.id },
+                      })
+                    }
                     viewLabel="View tailgate"
                   />
                 ))}

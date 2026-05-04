@@ -117,7 +117,9 @@ export default function NearMeTabScreen() {
                 key={tg.id}
                 tailgate={tg}
                 menuItems={menuItems}
-                onViewPress={() => router.push('/student/tailgate-detail')}
+                onViewPress={() =>
+                  router.push({ pathname: '/student/tailgate-detail', params: { tailgateId: tg.id } })
+                }
                 viewLabel="View tailgate"
               />
             ))}

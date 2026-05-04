@@ -42,5 +42,16 @@
     "status": "available",
     "pickupNote": "Papel picado table — say you claimed on TLAC",
     "imageKey": "roasted-veggie-tacos"
+  },
+  {
+    "id": "surplus-5",
+    "foodName": "Smoked wings (8)",
+    "groupName": "Bright's TLAC Pregame Table",
+    "location": "Joyce Center lot, Row 3 — navy TLAC flag",
+    "servingsRemaining": 10,
+    "minutesLeft": 35,
+    "status": "almost_gone",
+    "pickupNote": "Lot edge handoff — message Bright on TLAC when you arrive",
+    "imageKey": "smoked-wings"
   }
 ]

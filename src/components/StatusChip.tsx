@@ -57,7 +57,7 @@ const STATUS_APPEARANCE: Record<StatusValue, ChipAppearance> = {
     textColor: '#FFD28A',
     borderColor: 'rgba(245, 158, 11, 0.4)',
     dotColor: colors.gold,
-    label: 'Almost Gone',
+    label: 'Almost gone',
   },
   claimed: {
     backgroundColor: 'rgba(67, 106, 168, 0.24)',

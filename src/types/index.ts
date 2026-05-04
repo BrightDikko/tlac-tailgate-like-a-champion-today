@@ -66,6 +66,10 @@ export interface Tailgate {
   campusZone?: string;
   /** When they are serving (copy only) */
   servingWindow?: string;
+  /** Account id allowed to manage this tailgate (when backend auth exists). */
+  hostUserId?: string;
+  /** Account id that originally created this listing. */
+  createdByUserId?: string;
 }
 
 export type FoodCategory = 'entree' | 'side' | 'drink' | 'dessert';

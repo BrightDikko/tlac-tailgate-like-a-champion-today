@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Card, PrimaryButton, Screen, SecondaryButton, SectionHeader } from '@/src/components';
@@ -6,7 +6,36 @@ import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
 
+function paramOne(value: string | string[] | undefined): string | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  return Array.isArray(value) ? value[0] : value;
+}
+
 export default function PickupSuccessScreen() {
+  const params = useLocalSearchParams<{
+    claimId?: string;
+    servingsClaimed?: string;
+    foodName?: string;
+    groupName?: string;
+  }>();
+
+  const claimIdParam = paramOne(params.claimId);
+  const servingsParam = paramOne(params.servingsClaimed);
+  const foodNameParam = paramOne(params.foodName);
+  const groupNameParam = paramOne(params.groupName);
+
+  const parsedServings = servingsParam !== undefined ? Number.parseInt(servingsParam, 10) : NaN;
+  const servingsCount =
+    Number.isFinite(parsedServings) && parsedServings > 0 ? parsedServings : 2;
+
+  const displayClaimId = claimIdParam && claimIdParam.length > 0 ? claimIdParam : 'TLAC-4821';
+  const displayGroup =
+    groupNameParam && groupNameParam.length > 0 ? groupNameParam : 'Domer Grill Crew';
+
+  const subtitleServings = `${servingsCount} serving${servingsCount === 1 ? '' : 's'}`;
+
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <View style={styles.successWrap}>
@@ -15,7 +44,7 @@ export default function PickupSuccessScreen() {
         </View>
         <SectionHeader
           title="Pickup Confirmed"
-          subtitle="You helped save 2 servings from going to waste."
+          subtitle={`You helped save ${subtitleServings} from going to waste.`}
           style={styles.header}
         />
       </View>
@@ -29,9 +58,14 @@ export default function PickupSuccessScreen() {
       </Card>
 
       <Card variant="soft">
-        <Text style={styles.summaryLine}>2 servings saved</Text>
-        <Text style={styles.summaryLine}>Claim ID TLAC-4821</Text>
-        <Text style={styles.summaryLine}>Domer Grill Crew</Text>
+        <Text style={styles.summaryLine}>
+          {servingsCount} serving{servingsCount === 1 ? '' : 's'} saved
+        </Text>
+        <Text style={styles.summaryLine}>Claim ID {displayClaimId}</Text>
+        <Text style={styles.summaryLine}>{displayGroup}</Text>
+        {foodNameParam && foodNameParam.length > 0 ? (
+          <Text style={styles.summaryLine}>{foodNameParam}</Text>
+        ) : null}
       </Card>
 
       <PrimaryButton label="View impact" onPress={() => router.push('/impact')} />

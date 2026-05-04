@@ -20,7 +20,9 @@
     "avatarInitials": "MO",
     "featuredMenuItems": ["Smoked brisket", "Domer smashburgers", "Four-cheese mac"],
     "campusZone": "Stadium · Lot B",
-    "servingWindow": "10:00 AM – kickoff"
+    "servingWindow": "10:00 AM – kickoff",
+    "hostUserId": "mock-host-marcus",
+    "createdByUserId": "mock-host-marcus"
   },
   {
     "id": "event-2",
@@ -43,7 +45,9 @@
     "avatarInitials": "ES",
     "featuredMenuItems": ["St. Louis ribs", "Smoked wings", "Honey butter cornbread"],
     "campusZone": "Gold lot corridor",
-    "servingWindow": "9:00 AM – Victory March"
+    "servingWindow": "9:00 AM – Victory March",
+    "hostUserId": "mock-host-sullivan",
+    "createdByUserId": "mock-host-sullivan"
   },
   {
     "id": "event-3",
@@ -65,7 +69,9 @@
     "avatarInitials": "SG",
     "featuredMenuItems": ["Garden grain bowls", "Crispy cauliflower bites"],
     "campusZone": "Main quad",
-    "servingWindow": "11:00 AM – 2 hours before kickoff"
+    "servingWindow": "11:00 AM – 2 hours before kickoff",
+    "hostUserId": "mock-host-sustainability",
+    "createdByUserId": "mock-host-sustainability"
   },
   {
     "id": "event-4",
@@ -87,7 +93,9 @@
     "avatarInitials": "ZB",
     "featuredMenuItems": ["All-beef stadium dogs", "Cincinnati chili", "Apple cider"],
     "campusZone": "North quad",
-    "servingWindow": "Starts 9:30 AM"
+    "servingWindow": "Starts 9:30 AM",
+    "hostUserId": "mock-host-zahm",
+    "createdByUserId": "mock-host-zahm"
   },
   {
     "id": "event-5",
@@ -110,6 +118,58 @@
     "avatarInitials": "SR",
     "featuredMenuItems": ["Carne asada tacos", "Roasted veggie tacos", "Chips & fire-roasted salsa"],
     "campusZone": "Joyce lot",
-    "servingWindow": "11:30 AM – pregame"
+    "servingWindow": "11:30 AM – pregame",
+    "hostUserId": "mock-host-sofia",
+    "createdByUserId": "mock-host-sofia"
+  },
+  {
+    "id": "event-bright-1",
+    "groupName": "Bright's Irish Cookout",
+    "groupType": "Student host tailgate",
+    "hostName": "Bright Dikko",
+    "description": "Student-hosted cookout with grilled favorites, quick sides, and a friendly TLAC pickup table. Bring a friend — we batch-grill and label allergens on the card table.",
+    "locationDetail": "Library Quad — blue TLAC table near the walkway",
+    "status": "active",
+    "rating": 4.67,
+    "reviewCount": 12,
+    "attendeeEstimate": 32,
+    "distance": "0.2 mi",
+    "tags": ["Student host", "Cookout", "TLAC table", "Allergen labels"],
+    "trendingScore": 68,
+    "imageTone": "quad",
+    "imageKey": "irish-veggie-table",
+    "hostAvatarKey": "user-bright-dikko",
+    "placeImageKey": "library-quad",
+    "avatarInitials": "BD",
+    "featuredMenuItems": ["Domer smashburgers", "Roasted veggie tacos", "Lemonade & iced tea"],
+    "campusZone": "Main quad",
+    "servingWindow": "11:00 AM – 2 hours before kickoff",
+    "hostUserId": "tlac-user-001",
+    "createdByUserId": "tlac-user-001"
+  },
+  {
+    "id": "event-bright-2",
+    "groupName": "Bright's TLAC Pregame Table",
+    "groupType": "Student host tailgate",
+    "hostName": "Bright Dikko",
+    "description": "Second-row pregame spread: brisket ends, wings, and shareable sides. Same TLAC pickup flow — text when you arrive and we’ll walk plates to the lot edge.",
+    "locationDetail": "Joyce Center lot, Row 3 — look for the navy TLAC flag",
+    "status": "active",
+    "rating": 4.84,
+    "reviewCount": 19,
+    "attendeeEstimate": 48,
+    "distance": "0.28 mi",
+    "tags": ["BBQ", "Wings", "Student host", "TLAC pickup"],
+    "trendingScore": 74,
+    "imageTone": "goldLot",
+    "imageKey": "gold-lot-bbq-smoke",
+    "hostAvatarKey": "user-bright-dikko",
+    "placeImageKey": "joyce-center-lot",
+    "avatarInitials": "BD",
+    "featuredMenuItems": ["Smoked brisket", "Smoked wings", "Four-cheese mac"],
+    "campusZone": "Joyce lot",
+    "servingWindow": "10:30 AM – Victory March",
+    "hostUserId": "tlac-user-001",
+    "createdByUserId": "tlac-user-001"
   }
 ]

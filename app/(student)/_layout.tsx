@@ -1,13 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 
-import { colors } from '@/src/theme/colors';
 import { appTabBarScreenOptions } from '@/src/theme/tabBar';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
-function tabIcon(name: IconName, focused: boolean) {
-  return <Ionicons name={name} size={22} color={focused ? colors.goldLight : colors.muted} />;
+type TabBarIconProps = {
+  focused: boolean;
+  color: string;
+  size: number;
+};
+
+function tabIcon(filled: IconName, outline: IconName, { focused, color, size }: TabBarIconProps) {
+  return <Ionicons name={focused ? filled : outline} size={size} color={color} />;
 }
 
 export default function StudentShellLayout() {
@@ -17,37 +22,35 @@ export default function StudentShellLayout() {
         name="discover"
         options={{
           title: 'Discover',
-          tabBarIcon: ({ focused }) => tabIcon(focused ? 'compass' : 'compass-outline', focused),
+          tabBarIcon: (props) => tabIcon('compass', 'compass-outline', props),
         }}
       />
       <Tabs.Screen
         name="near-me"
         options={{
           title: 'Near Me',
-          tabBarIcon: ({ focused }) => tabIcon(focused ? 'map' : 'map-outline', focused),
+          tabBarIcon: (props) => tabIcon('map', 'map-outline', props),
         }}
       />
       <Tabs.Screen
         name="surplus"
         options={{
           title: 'Surplus',
-          tabBarIcon: ({ focused }) =>
-            tabIcon(focused ? 'leaf' : 'leaf-outline', focused),
+          tabBarIcon: (props) => tabIcon('leaf', 'leaf-outline', props),
         }}
       />
       <Tabs.Screen
         name="impact"
         options={{
           title: 'Impact',
-          tabBarIcon: ({ focused }) =>
-            tabIcon(focused ? 'stats-chart' : 'stats-chart-outline', focused),
+          tabBarIcon: (props) => tabIcon('stats-chart', 'stats-chart-outline', props),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ focused }) => tabIcon(focused ? 'person' : 'person-outline', focused),
+          tabBarIcon: (props) => tabIcon('person', 'person-outline', props),
         }}
       />
     </Tabs>

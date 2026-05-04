@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, Image, ImageBackground, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
 
 import { useGetCurrentGameQuery } from '@/src/api/endpoints/gamesApi';
@@ -19,7 +19,11 @@ import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
 
-const DETAIL_TAILGATE_ID = 'event-1';
+function paramOne(value: string | string[] | undefined): string | undefined {
+  if (value === undefined) return undefined;
+  const v = Array.isArray(value) ? value[0] : value;
+  return v === '' ? undefined : v;
+}
 
 function detailErrorMessage(err: unknown): string {
   if (err && typeof err === 'object' && 'data' in err) {
@@ -35,13 +39,16 @@ function detailErrorMessage(err: unknown): string {
 }
 
 export default function TailgateDetailScreen() {
+  const params = useLocalSearchParams<{ tailgateId?: string | string[] }>();
+  const selectedTailgateId = paramOne(params.tailgateId) ?? 'event-1';
+
   const {
     data: tailgate,
     isLoading: tailgateLoading,
     isError: tailgateError,
     error: tailgateErr,
     refetch: refetchTailgate,
-  } = useGetTailgateByIdQuery(DETAIL_TAILGATE_ID);
+  } = useGetTailgateByIdQuery(selectedTailgateId);
 
   const {
     data: menuResponse,
@@ -49,7 +56,7 @@ export default function TailgateDetailScreen() {
     isError: menuError,
     error: menuErr,
     refetch: refetchMenu,
-  } = useGetMenuByTailgateIdQuery({ tailgateId: DETAIL_TAILGATE_ID });
+  } = useGetMenuByTailgateIdQuery({ tailgateId: selectedTailgateId });
 
   const {
     data: currentGame,

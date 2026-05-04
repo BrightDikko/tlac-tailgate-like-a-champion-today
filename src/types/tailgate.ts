@@ -5,6 +5,8 @@ export type TailgateQueryParams = {
   search?: string;
   page?: number;
   pageSize?: number;
+  hostUserId?: string;
+  createdByUserId?: string;
 };
 
 /** Payload to create a tailgate; server may assign id, rating, reviewCount, distance, trendingScore. */
