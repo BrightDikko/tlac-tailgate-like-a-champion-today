@@ -1,14 +1,31 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { AppHeader, Card, Screen, SectionHeader, SurplusCard } from '@/src/components';
-import { currentGame, surplusItems } from '@/src/data/demoData';
+import { useGetSurplusQuery } from '@/src/api/endpoints/surplusApi';
+import { AppHeader, Card, Screen, SectionHeader, SecondaryButton, SurplusCard } from '@/src/components';
+import { currentGame } from '@/src/data/demoData';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
 
+function surplusErrorMessage(err: unknown): string {
+  if (err && typeof err === 'object' && 'data' in err) {
+    const d = (err as { data: unknown }).data;
+    if (d && typeof d === 'object' && d !== null && 'message' in d) {
+      return String((d as { message: string }).message);
+    }
+  }
+  if (err && typeof err === 'object' && 'message' in err) {
+    return String((err as { message: string }).message);
+  }
+  return 'Could not load surplus items.';
+}
+
 export default function SurplusTabScreen() {
+  const { data, isLoading, isError, error, refetch } = useGetSurplusQuery();
+  const surplusItems = data?.data ?? [];
+
   const goToPickup = () => {
     router.push('/student/pickup-timer');
   };
@@ -42,11 +59,22 @@ export default function SurplusTabScreen() {
         Claiming below reserves 2 servings of Pulled Pork Sliders for your pickup timer.
       </Text>
 
-      <View style={styles.list}>
-        {surplusItems.map((item) => (
-          <SurplusCard key={item.id} item={item} onClaimPress={goToPickup} />
-        ))}
-      </View>
+      {isLoading ? (
+        <View style={styles.stateBlock} accessibilityLabel="Loading surplus">
+          <ActivityIndicator size="large" color={colors.goldLight} />
+        </View>
+      ) : isError ? (
+        <Card variant="soft">
+          <Text style={styles.errorText}>{surplusErrorMessage(error)}</Text>
+          <SecondaryButton label="Try again" onPress={() => void refetch()} style={styles.retryButton} />
+        </Card>
+      ) : (
+        <View style={styles.list}>
+          {surplusItems.map((item) => (
+            <SurplusCard key={item.id} item={item} onClaimPress={goToPickup} />
+          ))}
+        </View>
+      )}
     </Screen>
   );
 }
@@ -87,5 +115,17 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: spacing.md,
+  },
+  stateBlock: {
+    paddingVertical: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorText: {
+    color: colors.muted,
+    fontSize: typography.body,
+  },
+  retryButton: {
+    marginTop: spacing.md,
   },
 });
