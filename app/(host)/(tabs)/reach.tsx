@@ -20,22 +20,10 @@ import type { GamePhase, SurplusItem, Tailgate } from '@/src/types';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
+import { messageFromUnknownError } from '@/src/utils/errorMessage';
 
 function phaseLabel(phase: GamePhase) {
   return phase === 'postgame' ? 'Post-game' : 'Pregame';
-}
-
-function reachErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load reach data.';
 }
 
 function tailgateLocation(tailgate: Tailgate): string {
@@ -124,7 +112,7 @@ export default function HostReachTabScreen() {
 
       {hasQueryError ? (
         <Card variant="soft" accentColor={colors.navy}>
-          <Text style={styles.errorText}>{reachErrorMessage(combinedError)}</Text>
+          <Text style={styles.errorText}>{messageFromUnknownError(combinedError, 'Could not load reach data.')}</Text>
           <SecondaryButton label="Try again" onPress={() => void refetchAll()} style={styles.retryButton} />
         </Card>
       ) : null}

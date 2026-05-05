@@ -8,19 +8,7 @@ import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
 import { acceptedCategoriesForCenter, categoryLabel } from '@/src/utils/donationCategories';
-
-function donateErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load donation centers.';
-}
+import { messageFromUnknownError } from '@/src/utils/errorMessage';
 
 export default function HostDonateTabScreen() {
   const {
@@ -53,7 +41,7 @@ export default function HostDonateTabScreen() {
         </Card>
       ) : isError ? (
         <Card variant="soft">
-          <Text style={styles.errorText}>{donateErrorMessage(error)}</Text>
+          <Text style={styles.errorText}>{messageFromUnknownError(error, 'Could not load donation centers.')}</Text>
           <SecondaryButton label="Try again" onPress={() => void refetch()} style={styles.retryButton} />
         </Card>
       ) : centers.length === 0 ? (

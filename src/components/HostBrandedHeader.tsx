@@ -3,6 +3,9 @@ import { Image, Pressable, StyleSheet, Text, View, type ImageSourcePropType } fr
 
 import { useGetMeQuery } from '../api/endpoints/authApi';
 import { avatarImages } from '../assets/images';
+import { selectIsAuthenticated } from '../features/auth/authSelectors';
+import { useAppSelector } from '../redux/hooks';
+import { API_MODE } from '../services/config/env';
 import type { CurrentUser } from '../types';
 import { colors } from '../theme/colors';
 import { AppHeader } from './AppHeader';
@@ -35,7 +38,9 @@ function avatarSourceFor(user: CurrentUser | undefined): ImageSourcePropType | u
  * Host shell header aligned with Student/Fan Discover: TLAC brand and logged-in host avatar.
  */
 export function HostBrandedHeader({ subtitle, rightAction }: HostBrandedHeaderProps) {
-  const { data: currentUser } = useGetMeQuery();
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const skipMeQuery = API_MODE === 'remote' && !isAuthenticated;
+  const { data: currentUser } = useGetMeQuery(undefined, { skip: skipMeQuery });
   const avatarSource = avatarSourceFor(currentUser);
   const initials = displayInitials(currentUser);
 

@@ -1,34 +1,32 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { useConfirmClaimMutation, useGetMyClaimsQuery, useReleaseClaimMutation } from '@/src/api/endpoints/claimsApi';
 import { useGetSurplusByIdQuery } from '@/src/api/endpoints/surplusApi';
 import { Card, PrimaryButton, Screen, SecondaryButton, SectionHeader } from '@/src/components';
+import { useRemoteAuthGate } from '@/src/features/auth/remoteAuthGate';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
+import { messageFromUnknownError } from '@/src/utils/errorMessage';
+import { paramOne } from '@/src/utils/routeParams';
 
-function paramOne(value: string | string[] | undefined): string | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  return Array.isArray(value) ? value[0] : value;
+function parseExpiresAtMs(raw: string | undefined): number | null {
+  if (raw === undefined || raw.trim() === '') return null;
+  const ms = Date.parse(raw);
+  return Number.isFinite(ms) ? ms : null;
 }
 
-function surplusErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load surplus details.';
+function formatMmSs(totalSeconds: number): string {
+  const sec = Math.max(0, totalSeconds);
+  const mm = Math.floor(sec / 60);
+  const ss = sec % 60;
+  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`;
 }
 
 export default function PickupTimerScreen() {
+  const { shouldRedirectToLogin } = useRemoteAuthGate();
   const params = useLocalSearchParams<{
     claimRecordId?: string;
     claimId?: string;
@@ -88,6 +86,19 @@ export default function PickupTimerScreen() {
 
   const actionBusy = isConfirming || isReleasing;
 
+  const endMs = useMemo(() => parseExpiresAtMs(activeClaim?.expiresAt), [activeClaim?.expiresAt]);
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (endMs === null) return;
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [endMs]);
+  const remainingSec = endMs === null ? null : Math.max(0, Math.floor((endMs - Date.now()) / 1000));
+
+  if (shouldRedirectToLogin) {
+    return <Redirect href="/login" />;
+  }
+
   const handleConfirmPickup = async () => {
     resetConfirmError();
     if (resolvedClaimRecordId && resolvedClaimRecordId.length > 0) {
@@ -134,7 +145,9 @@ export default function PickupTimerScreen() {
     </Card>
   ) : resolvedSurplusId.length > 0 && isSurplusError ? (
     <Card variant="soft">
-      <Text style={styles.errorText}>{surplusErrorMessage(surplusError)}</Text>
+      <Text style={styles.errorText}>
+        {messageFromUnknownError(surplusError, 'Could not load surplus details.')}
+      </Text>
       <SecondaryButton label="Try again" onPress={() => void refetchSurplus()} style={styles.retryButton} />
     </Card>
   ) : (
@@ -182,7 +195,9 @@ export default function PickupTimerScreen() {
       <Screen scroll contentContainerStyle={styles.content}>
         <SectionHeader title="Claim Reserved" subtitle="Your servings are held for pickup." />
         <Card variant="soft" accentColor={colors.navy}>
-          <Text style={styles.errorText}>{surplusErrorMessage(claimsError)}</Text>
+          <Text style={styles.errorText}>
+            {messageFromUnknownError(claimsError, 'Could not load claims.')}
+          </Text>
           <SecondaryButton label="Try again" onPress={() => void refetchClaims()} style={styles.retryButton} />
         </Card>
       </Screen>
@@ -206,8 +221,22 @@ export default function PickupTimerScreen() {
       <SectionHeader title="Claim Reserved" subtitle="Your servings are held for pickup." />
 
       <Card style={styles.timerCard} accentColor={colors.gold}>
-        <Text style={styles.timerValue}>29:42</Text>
-        <Text style={styles.timerLabel}>remaining in pickup window</Text>
+        {endMs === null ? (
+          <>
+            <Text style={styles.timerValue}>Pickup window active</Text>
+            <Text style={styles.timerLabel}>We will show a countdown when an end time is available.</Text>
+          </>
+        ) : remainingSec === 0 ? (
+          <>
+            <Text style={styles.timerValue}>00:00</Text>
+            <Text style={styles.timerLabel}>Window ending now</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.timerValue}>{formatMmSs(remainingSec ?? 0)}</Text>
+            <Text style={styles.timerLabel}>remaining in pickup window</Text>
+          </>
+        )}
       </Card>
 
       {detailCard}
@@ -220,12 +249,16 @@ export default function PickupTimerScreen() {
 
       {confirmError ? (
         <Card variant="soft" accentColor={colors.navy}>
-          <Text style={styles.errorText}>{surplusErrorMessage(confirmError)}</Text>
+          <Text style={styles.errorText}>
+            {messageFromUnknownError(confirmError, 'Could not confirm pickup.')}
+          </Text>
         </Card>
       ) : null}
       {releaseError ? (
         <Card variant="soft" accentColor={colors.navy}>
-          <Text style={styles.errorText}>{surplusErrorMessage(releaseError)}</Text>
+          <Text style={styles.errorText}>
+            {messageFromUnknownError(releaseError, 'Could not release claim.')}
+          </Text>
         </Card>
       ) : null}
 

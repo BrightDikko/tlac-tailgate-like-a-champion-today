@@ -26,6 +26,7 @@ import { colors } from '@/src/theme/colors';
 import { radii } from '@/src/theme/radii';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
+import { messageFromUnknownError } from '@/src/utils/errorMessage';
 
 type PublishDraftItem = {
   foodItemId: string;
@@ -93,32 +94,6 @@ function validatePublishDrafts(
     return 'Add a pickup note so neighbors know how to find you.';
   }
   return null;
-}
-
-function publishErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not publish surplus.';
-}
-
-function queryErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load publish data.';
 }
 
 function foodThumbSource(key: string | undefined): ImageSourcePropType | undefined {
@@ -280,6 +255,12 @@ export default function HostPublishTabScreen() {
       const minutesLeft = minutesFromWindow(pickupWindow);
       const createdAt = new Date().toISOString();
       const expiresAt = new Date(Date.now() + minutesLeft * 60_000).toISOString();
+      const trimmedNote = pickupNote.trim();
+      const itemsPublished = selectedDrafts.length;
+      const totalServings = selectedDrafts.reduce((sum, draft) => {
+        const n = Number.parseInt(draft.servingsRemaining, 10);
+        return sum + (Number.isFinite(n) ? n : 0);
+      }, 0);
       await Promise.all(
         selectedDrafts.map((draft) =>
           createSurplus({
@@ -291,14 +272,24 @@ export default function HostPublishTabScreen() {
             servingsRemaining: Number.parseInt(draft.servingsRemaining, 10),
             minutesLeft,
             status: 'available',
-            pickupNote: pickupNote.trim(),
+            pickupNote: trimmedNote,
             createdAt,
             expiresAt,
             ...(draft.imageKey !== undefined ? { imageKey: draft.imageKey } : {}),
           }).unwrap(),
         ),
       );
-      router.push('/host/surplus-published');
+      router.push({
+        pathname: '/host/surplus-published',
+        params: {
+          tailgateId: selectedHostTailgate.id,
+          tailgateName: selectedHostTailgate.groupName,
+          itemsPublished: String(itemsPublished),
+          totalServings: String(totalServings),
+          pickupWindowMinutes: String(minutesLeft),
+          pickupNote: trimmedNote,
+        },
+      });
     } catch {
       // surfaced via publishError
     }
@@ -329,7 +320,7 @@ export default function HostPublishTabScreen() {
             <Ionicons name="cloud-offline-outline" size={36} color={colors.goldLight} />
           </View>
           <Text style={styles.stateTitle}>Couldn’t load workspace</Text>
-          <Text style={styles.errorBody}>{queryErrorMessage(fatalQueryErr)}</Text>
+          <Text style={styles.errorBody}>{messageFromUnknownError(fatalQueryErr, 'Could not load publish data.')}</Text>
           <SecondaryButton label="Try again" onPress={() => void refetchAll()} />
         </Card>
       ) : null}
@@ -500,7 +491,7 @@ export default function HostPublishTabScreen() {
                 <Ionicons name="restaurant-outline" size={32} color={colors.goldLight} />
               </View>
               <Text style={styles.stateTitle}>Menu didn’t load</Text>
-              <Text style={styles.errorBody}>{queryErrorMessage(menuErr)}</Text>
+              <Text style={styles.errorBody}>{messageFromUnknownError(menuErr, 'Could not load publish data.')}</Text>
               <SecondaryButton label="Try again" onPress={() => void refetchMenu()} />
             </Card>
           ) : null}
@@ -683,7 +674,7 @@ export default function HostPublishTabScreen() {
                 <Card variant="soft" accentColor={colors.navy}>
                   <View style={styles.inlineAlertRow}>
                     <Ionicons name="warning-outline" size={22} color={colors.goldLight} />
-                    <Text style={styles.publishErrorText}>{publishErrorMessage(publishError)}</Text>
+                    <Text style={styles.publishErrorText}>{messageFromUnknownError(publishError, 'Could not publish surplus.')}</Text>
                   </View>
                 </Card>
               ) : null}

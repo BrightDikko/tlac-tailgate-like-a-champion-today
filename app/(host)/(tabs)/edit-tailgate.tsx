@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
   ImageBackground,
   ScrollView,
@@ -9,13 +10,12 @@ import {
   Text,
   TextInput,
   View,
-  type ImageSourcePropType,
 } from 'react-native';
 
-import { foodImages, placeholderImages, tailgateImages } from '@/src/assets/images';
 import {
   useGetMenuByTailgateIdQuery,
   useCreateMenuItemMutation,
+  useDeleteMenuItemMutation,
   useUpdateMenuItemMutation,
 } from '@/src/api/endpoints/menuApi';
 import { useGetTailgateByIdQuery, useUpdateTailgateMutation } from '@/src/api/endpoints/tailgatesApi';
@@ -25,115 +25,21 @@ import { colors } from '@/src/theme/colors';
 import { radii } from '@/src/theme/radii';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
-
-function paramOne(value: string | string[] | undefined): string | undefined {
-  if (value === undefined) return undefined;
-  const v = Array.isArray(value) ? value[0] : value;
-  return v === '' ? undefined : v;
-}
-
-const CATEGORY_OPTIONS: { value: FoodCategory; label: string }[] = [
-  { value: 'entree', label: 'Entree' },
-  { value: 'side', label: 'Side' },
-  { value: 'drink', label: 'Drink' },
-  { value: 'dessert', label: 'Dessert' },
-];
+import { isNotFoundError, messageFromUnknownError } from '@/src/utils/errorMessage';
+import {
+  CATEGORY_OPTIONS,
+  FOOD_IMAGE_KEYS,
+  FOOD_IMAGE_LABELS,
+  foodThumbSource,
+  labelFromKey,
+  TAILGATE_IMAGE_KEYS,
+  TAILGATE_IMAGE_LABELS,
+  tailgatePreviewSource,
+  validateMenuItemFields,
+} from '@/src/utils/hostTailgateForm';
+import { paramOne } from '@/src/utils/routeParams';
 
 const STATUS_OPTIONS: TailgateStatus[] = ['planned', 'active', 'completed'];
-
-const TAILGATE_IMAGE_KEYS = Object.keys(tailgateImages) as (keyof typeof tailgateImages)[];
-const FOOD_IMAGE_KEYS = Object.keys(foodImages) as (keyof typeof foodImages)[];
-
-const TAILGATE_IMAGE_LABELS: Record<string, string> = {
-  'domer-grill-crew': 'Domer grill crew',
-  'gold-lot-bbq-smoke': 'Gold lot BBQ smoke',
-  'irish-veggie-table': 'Irish veggie table',
-  'touchdown-taco-cantina': 'Touchdown taco cantina',
-  'zahm-dogs-chili': 'Zahm dogs and chili',
-};
-
-const FOOD_IMAGE_LABELS: Record<string, string> = {
-  'blue-gold-cupcakes': 'Blue and gold cupcakes',
-  'domer-smashburgers': 'Domer smashburgers',
-  'four-cheese-mac': 'Four-cheese mac',
-  'fudge-brownies': 'Fudge brownies',
-  'lemonade-and-iced-tea': 'Lemonade and iced tea',
-  'roasted-veggie-tacos': 'Roasted veggie tacos',
-  'smoked-brisket': 'Smoked brisket',
-  'smoked-wings': 'Smoked wings',
-  'stadium-brats': 'Stadium brats',
-};
-
-function sentenceCase(value: string): string {
-  const trimmed = value.trim();
-  if (trimmed.length === 0) return trimmed;
-  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-}
-
-function labelFromKey(key: string, labels?: Record<string, string>): string {
-  return labels?.[key] ?? sentenceCase(key.replace(/-/g, ' '));
-}
-
-function tailgatePreviewSource(key: string | undefined): ImageSourcePropType {
-  if (key !== undefined && key in tailgateImages) {
-    return tailgateImages[key as keyof typeof tailgateImages];
-  }
-  return placeholderImages.tailgate;
-}
-
-function foodThumbSource(key: string | undefined): ImageSourcePropType {
-  if (key !== undefined && key in foodImages) {
-    return foodImages[key as keyof typeof foodImages];
-  }
-  return placeholderImages.emptyVenue;
-}
-
-function mutationErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not update.';
-}
-
-function manageErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load tailgate.';
-}
-
-function isNotFoundError(err: unknown): boolean {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null) {
-      if ('code' in d && (d as { code?: string }).code === 'NOT_FOUND') return true;
-      const msg = 'message' in d ? String((d as { message: string }).message).toLowerCase() : '';
-      if (msg.includes('not found')) return true;
-    }
-  }
-  return false;
-}
-
-function validateMenuFields(name: string, description: string, qtyRaw: string, category: FoodCategory | null) {
-  if (name.trim() === '') return 'Menu item name is required.';
-  if (description.trim() === '') return 'Menu description is required.';
-  if (category === null) return 'Pick a category.';
-  const q = Number.parseInt(qtyRaw, 10);
-  if (!Number.isFinite(q) || q < 1) return 'Quantity must be a positive integer.';
-  return null;
-}
 
 export default function EditTailgateScreen() {
   const params = useLocalSearchParams<{ tailgateId?: string | string[] }>();
@@ -163,6 +69,9 @@ export default function EditTailgateScreen() {
 
   const [updateMenuItem, { isLoading: isUpdatingMenu, error: updateMenuErr, reset: resetUpdateMenuErr }] =
     useUpdateMenuItemMutation();
+
+  const [deleteMenuItem, { isLoading: isDeletingMenu, error: deleteMenuErr, reset: resetDeleteMenuErr }] =
+    useDeleteMenuItemMutation();
 
   const [groupName, setGroupName] = useState('');
   const [groupType, setGroupType] = useState('');
@@ -196,10 +105,12 @@ export default function EditTailgateScreen() {
   }, [tailgate, initializedForId]);
 
   const menuItems = menuResponse?.data ?? [];
-  const menuBusy = isCreatingMenu || isUpdatingMenu;
-  const menuMutationErrCombined = createMenuErr ?? updateMenuErr;
+  const menuBusy = isCreatingMenu || isUpdatingMenu || isDeletingMenu;
+  const menuMutationErrCombined = createMenuErr ?? updateMenuErr ?? deleteMenuErr;
   const menuMutationBanner =
-    menuMutationErrCombined !== undefined ? mutationErrorMessage(menuMutationErrCombined) : null;
+    menuMutationErrCombined !== undefined
+      ? messageFromUnknownError(menuMutationErrCombined, 'Could not update.')
+      : null;
 
   const resetMenuForm = () => {
     setMenuItemName('');
@@ -211,6 +122,7 @@ export default function EditTailgateScreen() {
     setMenuFieldError(null);
     resetCreateMenuErr();
     resetUpdateMenuErr();
+    resetDeleteMenuErr();
   };
 
   const handleSaveTailgate = async () => {
@@ -248,8 +160,9 @@ export default function EditTailgateScreen() {
     setMenuFieldError(null);
     resetCreateMenuErr();
     resetUpdateMenuErr();
+    resetDeleteMenuErr();
 
-    const err = validateMenuFields(menuItemName, menuItemDescription, menuItemQty, menuItemCategory);
+    const err = validateMenuItemFields(menuItemName, menuItemDescription, menuItemQty, menuItemCategory);
     if (err !== null) {
       setMenuFieldError(err);
       return;
@@ -300,6 +213,35 @@ export default function EditTailgateScreen() {
     setMenuFieldError(null);
     resetCreateMenuErr();
     resetUpdateMenuErr();
+    resetDeleteMenuErr();
+  };
+
+  const handleRequestDeleteMenuItem = (item: FoodItem) => {
+    if (tailgateId === undefined) return;
+    Alert.alert(
+      'Delete menu item',
+      `Remove “${item.name}” from this tailgate menu? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              resetDeleteMenuErr();
+              try {
+                await deleteMenuItem({ id: item.id, tailgateId }).unwrap();
+                if (editingMenuItemId === item.id) {
+                  resetMenuForm();
+                }
+              } catch {
+                /* surfaced via deleteMenuErr */
+              }
+            })();
+          },
+        },
+      ]
+    );
   };
 
   const handleCancelMenuEdit = () => {
@@ -352,7 +294,7 @@ export default function EditTailgateScreen() {
       <Screen scroll contentContainerStyle={styles.content} safeAreaEdges={['top', 'left', 'right']}>
         <SectionHeader title="Edit tailgate" />
         <Card variant="soft">
-          <Text style={styles.muted}>{manageErrorMessage(tailgateErr)}</Text>
+          <Text style={styles.muted}>{messageFromUnknownError(tailgateErr, 'Could not load tailgate.')}</Text>
           <SecondaryButton label="Try again" onPress={() => void refetchTailgate()} style={styles.stackGap} />
         </Card>
       </Screen>
@@ -392,7 +334,7 @@ export default function EditTailgateScreen() {
 
       {saveError ? (
         <Card variant="soft">
-          <Text style={styles.errorText}>{mutationErrorMessage(saveError)}</Text>
+          <Text style={styles.errorText}>{messageFromUnknownError(saveError, 'Could not update.')}</Text>
         </Card>
       ) : null}
 
@@ -488,7 +430,7 @@ export default function EditTailgateScreen() {
 
       {menuError ? (
         <Card variant="soft">
-          <Text style={styles.errorText}>{manageErrorMessage(menuErr)}</Text>
+          <Text style={styles.errorText}>{messageFromUnknownError(menuErr, 'Could not load tailgate.')}</Text>
           <SecondaryButton label="Try again" onPress={() => void refetchMenu()} style={styles.stackGap} />
         </Card>
       ) : null}
@@ -525,7 +467,16 @@ export default function EditTailgateScreen() {
                   <Text style={styles.menuItemDesc}>{item.description}</Text>
                 </View>
               </View>
-              <SecondaryButton label="Edit" onPress={() => handleEditMenuItem(item)} />
+              <View style={styles.menuItemActions}>
+                <SecondaryButton label="Edit" size="md" onPress={() => handleEditMenuItem(item)} />
+                <SecondaryButton
+                  label="Delete"
+                  size="md"
+                  onPress={() => handleRequestDeleteMenuItem(item)}
+                  disabled={menuBusy}
+                  textStyle={styles.destructiveButtonLabel}
+                />
+              </View>
             </Card>
           ))}
 
@@ -688,6 +639,16 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     fontWeight: '700',
     marginTop: spacing.xs,
+  },
+  menuItemActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  destructiveButtonLabel: {
+    color: '#B91C1C',
+    fontWeight: '800',
   },
   menuItemDesc: {
     color: colors.muted,

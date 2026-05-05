@@ -16,10 +16,26 @@ type SetCredentialsPayload = {
     refreshToken?: string;
 };
 
+type HydrateTokensPayload = {
+    accessToken: string;
+    refreshToken?: string | null;
+};
+
 const authSlice = createSlice({
     name: 'auth',
     initialState,
     reducers: {
+        hydrateTokens: (state, action: PayloadAction<HydrateTokensPayload>) => {
+            state.accessToken = action.payload.accessToken;
+            state.refreshToken =
+                action.payload.refreshToken !== undefined &&
+                action.payload.refreshToken !== null &&
+                action.payload.refreshToken.length > 0
+                    ? action.payload.refreshToken
+                    : null;
+            state.user = null;
+            state.isAuthenticated = false;
+        },
         setCredentials: (state, action: PayloadAction<SetCredentialsPayload>) => {
             state.user = action.payload.user;
             state.accessToken = action.payload.accessToken;
@@ -35,6 +51,6 @@ const authSlice = createSlice({
     },
 });
 
-export const { setCredentials, clearCredentials } = authSlice.actions;
+export const { hydrateTokens, setCredentials, clearCredentials } = authSlice.actions;
 
 export const authReducer = authSlice.reducer;

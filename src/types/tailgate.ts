@@ -15,3 +15,10 @@ export type CreateTailgateInput = Omit<Tailgate, 'id' | 'rating' | 'reviewCount'
 export type UpdateTailgateInput = Partial<Omit<Tailgate, 'id'>> & {
   id: string;
 };
+
+/** Mock delete returns full cascade; remote may return empty body — use `tailgateId` fallback for cache tags. */
+export type TailgateDeleteResult = {
+  tailgateId: string;
+  removedSurplusIds: string[];
+  removedMenuItemIds: string[];
+};

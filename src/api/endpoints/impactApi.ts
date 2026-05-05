@@ -1,26 +1,10 @@
-import type {
-  FetchBaseQueryError,
-  FetchBaseQueryMeta,
-  QueryReturnValue,
-} from '@reduxjs/toolkit/query';
-
 import { baseApi } from '@/src/api/baseApi';
+import { mapImpact } from '@/src/api/mappers';
+import { remoteToSingle } from '@/src/api/response';
 import { impactHandlers } from '@/src/mocks/handlers/impactHandlers';
 import { API_MODE } from '@/src/services/config/env';
 
-import type { ApiError, Impact } from '@/src/types';
-
-function asRemoteImpact(value: unknown): QueryReturnValue<
-  Impact,
-  ApiError | FetchBaseQueryError,
-  FetchBaseQueryMeta | undefined
-> {
-  return value as QueryReturnValue<
-    Impact,
-    ApiError | FetchBaseQueryError,
-    FetchBaseQueryMeta | undefined
-  >;
-}
+import type { Impact } from '@/src/types';
 
 export const impactApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -30,12 +14,7 @@ export const impactApi = baseApi.injectEndpoints({
           const res = await impactHandlers.getMyImpact();
           return { data: res.data };
         }
-        return asRemoteImpact(
-          await baseQuery({
-            url: '/impact/me',
-            method: 'GET',
-          })
-        );
+        return remoteToSingle(await baseQuery({ url: '/impact/me', method: 'GET' }), mapImpact);
       },
       providesTags: () => [{ type: 'Impact' as const, id: 'ME' }],
     }),
@@ -46,12 +25,7 @@ export const impactApi = baseApi.injectEndpoints({
           const res = await impactHandlers.getGlobalImpact();
           return { data: res.data };
         }
-        return asRemoteImpact(
-          await baseQuery({
-            url: '/impact/global',
-            method: 'GET',
-          })
-        );
+        return remoteToSingle(await baseQuery({ url: '/impact/global', method: 'GET' }), mapImpact);
       },
       providesTags: () => [{ type: 'Impact' as const, id: 'GLOBAL' }],
     }),

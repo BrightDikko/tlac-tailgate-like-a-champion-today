@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
 import {
   ActivityIndicator,
+  Alert,
   ImageBackground,
   StyleSheet,
   Text,
@@ -12,8 +13,8 @@ import {
 import { placeholderImages, tailgateImages } from '@/src/assets/images';
 import { useGetCurrentGameQuery } from '@/src/api/endpoints/gamesApi';
 import { useGetMenuByTailgateIdQuery } from '@/src/api/endpoints/menuApi';
-import { useGetSurplusQuery } from '@/src/api/endpoints/surplusApi';
-import { useGetTailgateByIdQuery } from '@/src/api/endpoints/tailgatesApi';
+import { useCloseSurplusMutation, useGetSurplusQuery } from '@/src/api/endpoints/surplusApi';
+import { useDeleteTailgateMutation, useGetTailgateByIdQuery } from '@/src/api/endpoints/tailgatesApi';
 import {
   Card,
   FoodItemCard,
@@ -24,29 +25,12 @@ import {
   SectionHeader,
   StatusChip,
 } from '@/src/components';
-import type { TailgateImageTone } from '@/src/types';
+import type { SurplusItem, TailgateImageTone } from '@/src/types';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
-
-function paramOne(value: string | string[] | undefined): string | undefined {
-  if (value === undefined) return undefined;
-  const v = Array.isArray(value) ? value[0] : value;
-  return v === '' ? undefined : v;
-}
-
-function manageErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load tailgate.';
-}
+import { isNotFoundError, messageFromUnknownError } from '@/src/utils/errorMessage';
+import { paramOne } from '@/src/utils/routeParams';
 
 const IMAGE_TONE_GRADIENT: Record<TailgateImageTone, { bottom: string }> = {
   stadium: { bottom: '#0B2A4A' },
@@ -81,21 +65,14 @@ function ManageScreenHeader() {
   );
 }
 
-function isNotFoundError(err: unknown): boolean {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null) {
-      if ('code' in d && (d as { code?: string }).code === 'NOT_FOUND') return true;
-      const msg = 'message' in d ? String((d as { message: string }).message).toLowerCase() : '';
-      if (msg.includes('not found')) return true;
-    }
-  }
-  return false;
-}
-
 export default function TailgateManageScreen() {
   const params = useLocalSearchParams<{ tailgateId?: string | string[] }>();
   const tailgateId = paramOne(params.tailgateId);
+
+  const [deleteTailgate, { isLoading: isDeletingTailgate, error: deleteTailgateErr, reset: resetDeleteTailgateErr }] =
+    useDeleteTailgateMutation();
+  const [closeSurplus, { isLoading: isClosingSurplus, error: closeSurplusErr, reset: resetCloseSurplusErr }] =
+    useCloseSurplusMutation();
 
   const {
     data: tailgate,
@@ -137,6 +114,59 @@ export default function TailgateManageScreen() {
     void refetchMenu();
     void refetchGame();
     void refetchSurplus();
+  };
+
+  const confirmDeleteTailgate = (tgId: string, status: 'planned' | 'completed') => {
+    const isPlanned = status === 'planned';
+    Alert.alert(
+      isPlanned ? 'Delete planned tailgate' : 'Archive completed tailgate',
+      isPlanned
+        ? 'This removes the tailgate, its menu items, and surplus listings from TLAC. This cannot be undone in mock mode.'
+        : 'This removes the completed tailgate listing and its related menu and surplus data from TLAC in mock mode.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: isPlanned ? 'Delete' : 'Archive',
+          style: 'destructive',
+          onPress: () => {
+            void (async () => {
+              resetDeleteTailgateErr();
+              try {
+                await deleteTailgate(tgId).unwrap();
+                router.replace('/dashboard');
+              } catch {
+                /* surfaced via deleteTailgateErr */
+              }
+            })();
+          },
+        },
+      ]
+    );
+  };
+
+  const confirmCloseSurplus = (s: SurplusItem) => {
+    if (s.status !== 'available' && s.status !== 'almost_gone') return;
+    Alert.alert(
+      'Close surplus listing',
+      `Close “${s.foodName}”? It will show as expired with zero servings and will no longer accept new claims.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Close listing',
+          style: 'destructive',
+            onPress: () => {
+            void (async () => {
+              resetCloseSurplusErr();
+              try {
+                await closeSurplus(s.id).unwrap();
+              } catch {
+                /* surfaced via closeSurplusErr */
+              }
+            })();
+          },
+        },
+      ]
+    );
   };
 
   const dataLoading = Boolean(
@@ -197,7 +227,9 @@ export default function TailgateManageScreen() {
       <Screen scroll contentContainerStyle={styles.content}>
         <ManageScreenHeader />
         <Card variant="soft">
-          <Text style={styles.muted}>{manageErrorMessage(combinedError)}</Text>
+          <Text style={styles.muted}>
+            {messageFromUnknownError(combinedError, 'Could not load tailgate.')}
+          </Text>
           <SecondaryButton label="Try again" onPress={() => void refetchAll()} style={styles.stackGap} />
         </Card>
       </Screen>
@@ -329,6 +361,16 @@ export default function TailgateManageScreen() {
               <Text style={styles.surplusMeta}>
                 {s.servingsRemaining} servings · {s.minutesLeft} min left
               </Text>
+              {s.status === 'available' || s.status === 'almost_gone' ? (
+                <SecondaryButton
+                  label="Close listing"
+                  size="md"
+                  onPress={() => confirmCloseSurplus(s)}
+                  disabled={isClosingSurplus}
+                  style={styles.surplusCloseBtn}
+                  textStyle={styles.destructiveLabel}
+                />
+              ) : null}
             </Card>
           ))}
         </View>
@@ -337,6 +379,57 @@ export default function TailgateManageScreen() {
           <Text style={styles.muted}>No surplus has been published for this tailgate yet.</Text>
         </Card>
       )}
+
+      {closeSurplusErr ? (
+        <Card variant="soft" accentColor={colors.navy}>
+          <Text style={styles.muted}>
+            {messageFromUnknownError(closeSurplusErr, 'Could not close surplus listing.')}
+          </Text>
+          <SecondaryButton label="Dismiss" size="md" onPress={() => resetCloseSurplusErr()} style={styles.stackGap} />
+        </Card>
+      ) : null}
+
+      {deleteTailgateErr ? (
+        <Card variant="soft" accentColor={colors.navy}>
+          <Text style={styles.muted}>
+            {messageFromUnknownError(deleteTailgateErr, 'Could not remove tailgate.')}
+          </Text>
+          <SecondaryButton label="Dismiss" size="md" onPress={() => resetDeleteTailgateErr()} style={styles.stackGap} />
+        </Card>
+      ) : null}
+
+      <SectionHeader title="Danger zone" />
+      {tailgate.status === 'active' ? (
+        <Card variant="soft">
+          <Text style={styles.muted}>
+            Active tailgates cannot be deleted here. Change status to planned or completed first if you need to remove
+            this listing.
+          </Text>
+        </Card>
+      ) : null}
+
+      {tailgate.status === 'planned' || tailgate.status === 'completed' ? (
+        <Card variant="soft" accentColor={colors.navy}>
+          <Text style={styles.destructiveHint}>
+            {tailgate.status === 'planned'
+              ? 'Deleting removes this planned tailgate and all associated menu and surplus data from TLAC in mock mode.'
+              : 'Archiving removes this completed tailgate listing and associated menu and surplus mock data.'}
+          </Text>
+          <SecondaryButton
+            label={tailgate.status === 'planned' ? 'Delete planned tailgate' : 'Archive completed tailgate'}
+            size="md"
+            onPress={() => {
+              const st = tailgate.status;
+              if (st === 'planned' || st === 'completed') {
+                confirmDeleteTailgate(tailgate.id, st);
+              }
+            }}
+            disabled={isDeletingTailgate}
+            textStyle={styles.destructiveLabel}
+            style={styles.stackGap}
+          />
+        </Card>
+      ) : null}
     </Screen>
   );
 }
@@ -374,6 +467,20 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: typography.body,
     lineHeight: 22,
+  },
+  destructiveHint: {
+    color: colors.text,
+    fontSize: typography.body,
+    lineHeight: 22,
+    fontWeight: '600',
+  },
+  destructiveLabel: {
+    color: '#B91C1C',
+    fontWeight: '800',
+  },
+  surplusCloseBtn: {
+    marginTop: spacing.sm,
+    alignSelf: 'flex-start',
   },
   stackGap: {
     marginTop: spacing.md,

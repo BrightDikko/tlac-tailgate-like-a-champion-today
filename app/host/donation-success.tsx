@@ -1,10 +1,11 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { useGetDonationByIdQuery } from '@/src/api/endpoints/donationsApi';
 import { useGetDonationCenterByIdQuery } from '@/src/api/endpoints/donationCentersApi';
 import { useGetSurplusByIdQuery } from '@/src/api/endpoints/surplusApi';
 import { Card, PrimaryButton, Screen, SecondaryButton, SectionHeader } from '@/src/components';
+import { useRemoteAuthGate } from '@/src/features/auth/remoteAuthGate';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
@@ -19,6 +20,7 @@ function formatWhen(iso: string | undefined): string {
 }
 
 export default function DonationSuccessScreen() {
+  const { shouldRedirectToLogin } = useRemoteAuthGate();
   const params = useLocalSearchParams<{
     donationId?: string | string[];
     donationCenterId?: string | string[];
@@ -55,6 +57,10 @@ export default function DonationSuccessScreen() {
   const { data: surplus, isLoading: surplusLoading } = useGetSurplusByIdQuery(surplusIdForQuery, {
     skip: surplusIdForQuery === '',
   });
+
+  if (shouldRedirectToLogin) {
+    return <Redirect href="/login" />;
+  }
 
   const weightDisplay =
     donation !== undefined

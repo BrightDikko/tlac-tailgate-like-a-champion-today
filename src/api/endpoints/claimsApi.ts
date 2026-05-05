@@ -1,10 +1,6 @@
-import type {
-  FetchBaseQueryError,
-  FetchBaseQueryMeta,
-  QueryReturnValue,
-} from '@reduxjs/toolkit/query';
-
 import { baseApi } from '@/src/api/baseApi';
+import { mapClaimRecord } from '@/src/api/mappers';
+import { fromMockApiResult, remoteToArray, remoteToSingle } from '@/src/api/response';
 import { claimsHandlers } from '@/src/mocks/handlers/claimsHandlers';
 import { API_MODE } from '@/src/services/config/env';
 
@@ -17,39 +13,6 @@ import type {
   ReleaseClaimInput,
 } from '@/src/types';
 
-function fromApiResult<T>(
-  result: ApiResponse<T> | ApiError
-): QueryReturnValue<T, ApiError | FetchBaseQueryError, FetchBaseQueryMeta | undefined> {
-  if ('data' in result) {
-    return { data: result.data };
-  }
-  return { error: result };
-}
-
-function asRemoteClaim(value: unknown): QueryReturnValue<
-  ClaimRecord,
-  ApiError | FetchBaseQueryError,
-  FetchBaseQueryMeta | undefined
-> {
-  return value as QueryReturnValue<
-    ClaimRecord,
-    ApiError | FetchBaseQueryError,
-    FetchBaseQueryMeta | undefined
-  >;
-}
-
-function asRemoteClaimsList(value: unknown): QueryReturnValue<
-  ClaimRecord[],
-  ApiError | FetchBaseQueryError,
-  FetchBaseQueryMeta | undefined
-> {
-  return value as QueryReturnValue<
-    ClaimRecord[],
-    ApiError | FetchBaseQueryError,
-    FetchBaseQueryMeta | undefined
-  >;
-}
-
 export const claimsApi = baseApi.injectEndpoints({
   overrideExisting: true,
   endpoints: (builder) => ({
@@ -57,14 +20,9 @@ export const claimsApi = baseApi.injectEndpoints({
       queryFn: async (_arg, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await claimsHandlers.getMyClaims();
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<ClaimRecord[]> | ApiError);
         }
-        return asRemoteClaimsList(
-          await baseQuery({
-            url: '/claims/me',
-            method: 'GET',
-          })
-        );
+        return remoteToArray(await baseQuery({ url: '/claims/me', method: 'GET' }), mapClaimRecord);
       },
       providesTags: (result) => {
         const listTag = { type: 'Claim' as const, id: 'LIST' as const };
@@ -86,14 +44,15 @@ export const claimsApi = baseApi.injectEndpoints({
       queryFn: async ({ surplusId, input }, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await claimsHandlers.claimSurplus(surplusId, input);
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<ClaimRecord> | ApiError);
         }
-        return asRemoteClaim(
+        return remoteToSingle(
           await baseQuery({
             url: `/surplus/${surplusId}/claims`,
             method: 'POST',
             body: input,
-          })
+          }),
+          mapClaimRecord
         );
       },
       invalidatesTags: (result, _error, { surplusId }) => [
@@ -111,14 +70,15 @@ export const claimsApi = baseApi.injectEndpoints({
       queryFn: async ({ id, input }, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await claimsHandlers.confirmClaim(id, input);
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<ClaimRecord> | ApiError);
         }
-        return asRemoteClaim(
+        return remoteToSingle(
           await baseQuery({
             url: `/claims/${id}/confirm`,
             method: 'POST',
             body: input ?? {},
-          })
+          }),
+          mapClaimRecord
         );
       },
       invalidatesTags: (result, _error, { id }) => [
@@ -136,14 +96,15 @@ export const claimsApi = baseApi.injectEndpoints({
       queryFn: async ({ id, input }, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await claimsHandlers.releaseClaim(id, input);
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<ClaimRecord> | ApiError);
         }
-        return asRemoteClaim(
+        return remoteToSingle(
           await baseQuery({
             url: `/claims/${id}/release`,
             method: 'POST',
             body: input ?? {},
-          })
+          }),
+          mapClaimRecord
         );
       },
       invalidatesTags: (result, _error, { id }) => [

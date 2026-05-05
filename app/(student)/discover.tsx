@@ -15,8 +15,8 @@ import {
   SectionHeader,
   TailgateCard,
 } from '@/src/components';
-import { menuItems } from '@/src/data/demoData';
-import type { FoodItem, GamePhase, Tailgate } from '@/src/types';
+import type { GamePhase, Tailgate } from '@/src/types';
+import { messageFromUnknownError } from '@/src/utils/errorMessage';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
@@ -62,12 +62,7 @@ function distanceValue(distance: string): number {
   return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
 }
 
-function menuForTailgate(tailgateId: string, items: FoodItem[]): FoodItem[] {
-  return items.filter((i) => i.tailgateId === tailgateId);
-}
-
-function buildSearchHaystack(t: Tailgate, items: FoodItem[]): string {
-  const tgItems = menuForTailgate(t.id, items);
+function buildSearchHaystack(t: Tailgate): string {
   const parts: string[] = [
     t.groupName,
     t.groupType,
@@ -79,13 +74,6 @@ function buildSearchHaystack(t: Tailgate, items: FoodItem[]): string {
     ...(t.featuredMenuItems ?? []),
     ...t.tags,
   ];
-  for (const item of tgItems) {
-    parts.push(item.name, item.description, item.category);
-    if (item.category === 'entree') parts.push('entrees', 'main', 'plate');
-    if (item.category === 'side') parts.push('sides', 'shareable');
-    if (item.category === 'dessert') parts.push('desserts', 'sweet', 'treat');
-    if (item.category === 'drink') parts.push('drinks', 'beverage');
-  }
   return parts.join(' ').toLowerCase();
 }
 
@@ -107,10 +95,10 @@ function normalizeSearchQuery(raw: string): string {
   return s;
 }
 
-function tailgateMatchesSearch(t: Tailgate, items: FoodItem[], rawQuery: string): boolean {
+function tailgateMatchesSearch(t: Tailgate, rawQuery: string): boolean {
   const q = normalizeSearchQuery(rawQuery);
   if (!q) return true;
-  const hay = buildSearchHaystack(t, items);
+  const hay = buildSearchHaystack(t);
   const tokens = q.split(/\s+/).filter(Boolean);
   return tokens.every((tok) => hay.includes(tok));
 }
@@ -119,16 +107,13 @@ function textMentionsAny(hay: string, terms: readonly string[]): boolean {
   return terms.some((term) => hay.includes(term));
 }
 
-function tailgateMatchesBbq(t: Tailgate, items: FoodItem[]): boolean {
-  const tgItems = menuForTailgate(t.id, items);
+function tailgateMatchesBbq(t: Tailgate): boolean {
+  const featuredHay = (t.featuredMenuItems ?? []).join(' ').toLowerCase();
+  if (textMentionsAny(featuredHay, BBQ_TERMS)) return true;
   const tagHay = t.tags.join(' ').toLowerCase();
   if (textMentionsAny(tagHay, BBQ_TERMS)) return true;
   const descHay = `${t.description} ${t.groupName}`.toLowerCase();
   if (textMentionsAny(descHay, BBQ_TERMS)) return true;
-  for (const item of tgItems) {
-    const itemHay = `${item.name} ${item.description} ${item.category}`.toLowerCase();
-    if (textMentionsAny(itemHay, BBQ_TERMS)) return true;
-  }
   return false;
 }
 
@@ -151,10 +136,10 @@ const ENTREE_HINTS = [
 
 const DESSERT_HINTS = ['dessert', 'cupcake', 'brownie', 'sweet', 'cookie', 'cake', 'treat'] as const;
 
-function tailgateMatchesCategoryFilter(t: Tailgate, items: FoodItem[], filter: DiscoverFilterId): boolean {
-  const tgItems = menuForTailgate(t.id, items);
+function tailgateMatchesCategoryFilter(t: Tailgate, filter: DiscoverFilterId): boolean {
   const tagBlob = t.tags.join(' ').toLowerCase();
   const descBlob = t.description.toLowerCase();
+  const featuredBlob = (t.featuredMenuItems ?? []).join(' ').toLowerCase();
 
   switch (filter) {
     case 'all':
@@ -162,24 +147,23 @@ function tailgateMatchesCategoryFilter(t: Tailgate, items: FoodItem[], filter: D
     case 'near_me':
       return true;
     case 'bbq':
-      return tailgateMatchesBbq(t, items);
+      return tailgateMatchesBbq(t);
     case 'entrees': {
-      if (tgItems.some((i) => i.category === 'entree')) return true;
-      const blob = `${tagBlob} ${descBlob}`;
+      const blob = `${tagBlob} ${descBlob} ${featuredBlob}`;
       return ENTREE_HINTS.some((h) => blob.includes(h));
     }
     case 'sides': {
-      if (tgItems.some((i) => i.category === 'side')) return true;
       return (
         t.tags.some((tag) => tag.toLowerCase().includes('side')) ||
         descBlob.includes('sides') ||
+        featuredBlob.includes('side') ||
         descBlob.includes('vegetarian') ||
-        tagBlob.includes('vegetarian')
+        tagBlob.includes('vegetarian') ||
+        featuredBlob.includes('vegetarian')
       );
     }
     case 'desserts': {
-      if (tgItems.some((i) => i.category === 'dessert')) return true;
-      const blob = `${tagBlob} ${descBlob}`;
+      const blob = `${tagBlob} ${descBlob} ${featuredBlob}`;
       return DESSERT_HINTS.some((h) => blob.includes(h));
     }
     default: {
@@ -199,14 +183,9 @@ function sortTailgatesForDiscover(list: Tailgate[], filter: DiscoverFilterId): T
   return next;
 }
 
-function filterAndSortTailgates(
-  all: Tailgate[],
-  items: FoodItem[],
-  filter: DiscoverFilterId,
-  query: string
-): Tailgate[] {
-  const narrowed = all.filter((t) => tailgateMatchesCategoryFilter(t, items, filter));
-  const searched = narrowed.filter((t) => tailgateMatchesSearch(t, items, query));
+function filterAndSortTailgates(all: Tailgate[], filter: DiscoverFilterId, query: string): Tailgate[] {
+  const narrowed = all.filter((t) => tailgateMatchesCategoryFilter(t, filter));
+  const searched = narrowed.filter((t) => tailgateMatchesSearch(t, query));
   return sortTailgatesForDiscover(searched, filter);
 }
 
@@ -246,22 +225,9 @@ function resultsSectionCopy(
   return {
     title: 'Matching tailgates',
     subtitle: hasQuery
-      ? 'Hosts, menus, lots, and tags that match what you typed.'
+        ? 'Hosts, featured bites, lots, and tags that match what you typed.'
       : 'Filtered for this gameday. Refine with search anytime.',
   };
-}
-
-function discoverErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load discover data.';
 }
 
 export default function DiscoverTabScreen() {
@@ -297,7 +263,7 @@ export default function DiscoverTabScreen() {
   );
 
   const matchingTailgates = useMemo(
-    () => filterAndSortTailgates(tailgatesList, menuItems, selectedFilter, searchQuery),
+    () => filterAndSortTailgates(tailgatesList, selectedFilter, searchQuery),
     [tailgatesList, searchQuery, selectedFilter]
   );
 
@@ -354,7 +320,9 @@ export default function DiscoverTabScreen() {
         </Card>
       ) : isError ? (
         <Card variant="soft">
-          <Text style={styles.emptyBody}>{discoverErrorMessage(combinedError)}</Text>
+          <Text style={styles.emptyBody}>
+            {messageFromUnknownError(combinedError, 'Could not load discover data.')}
+          </Text>
           <SecondaryButton label="Try again" onPress={() => void refetchDiscover()} />
         </Card>
       ) : (
@@ -399,7 +367,6 @@ export default function DiscoverTabScreen() {
                 />
                 <TailgateCard
                   tailgate={featuredBrowse}
-                  menuItems={menuItems}
                   highlightLabel="Top pick"
                   heroTone="gold"
                   onPress={() =>
@@ -423,7 +390,6 @@ export default function DiscoverTabScreen() {
                     <TailgateCard
                       key={tailgate.id}
                       tailgate={tailgate}
-                      menuItems={menuItems}
                       heroTone="navy"
                       onViewPress={() =>
                         router.push({
@@ -450,7 +416,6 @@ export default function DiscoverTabScreen() {
                   <TailgateCard
                     key={tailgate.id}
                     tailgate={tailgate}
-                    menuItems={menuItems}
                     highlightLabel={
                       index === 0 ? (searchQuery.trim() ? 'Top match' : 'Top pick') : undefined
                     }

@@ -1,50 +1,69 @@
-# Welcome to your Expo app 👋
+# TLAC (Expo + React Native)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Tailgate and surplus pickup flows for hosts and Student/Fan users.
 
-## Get started
+## Install dependencies
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+After cloning or when `package.json` changes (for example adding `expo-secure-store`):
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## API mode and base URL
+
+The app reads Expo public env vars at build time:
+
+| Variable | Values | Default |
+|----------|--------|---------|
+| `EXPO_PUBLIC_API_MODE` | `mock` or `remote` | `mock` if unset or invalid |
+| `EXPO_PUBLIC_API_BASE_URL` | Full base URL for the REST API | `http://localhost:3000/api/v1` if unset |
+
+### Run in mock mode (default)
+
+No env vars required. Optional explicit config:
+
+```bash
+EXPO_PUBLIC_API_MODE=mock npx expo start
+```
+
+### Run in remote mode against a local backend
+
+Point the app at your machine or LAN URL (device/simulator must reach the host):
+
+```bash
+EXPO_PUBLIC_API_MODE=remote EXPO_PUBLIC_API_BASE_URL=http://localhost:3000/api/v1 npx expo start
+```
+
+Use your LAN IP from a physical device, for example:
+
+```bash
+EXPO_PUBLIC_API_MODE=remote EXPO_PUBLIC_API_BASE_URL=http://192.168.1.10:3000/api/v1 npx expo start
+```
+
+### Run in remote mode against a deployed backend
+
+```bash
+EXPO_PUBLIC_API_MODE=remote EXPO_PUBLIC_API_BASE_URL=https://api.example.com/api/v1 npx expo start
+```
+
+Remote mode expects a Bearer access token on authenticated requests, `POST /auth/refresh` with `{ "refreshToken": "..." }` on 401, and `GET /auth/me` for the current user after tokens are restored from secure storage on launch.
+
+## Start the app
+
+```bash
+npx expo start
+```
+
+Then open in iOS Simulator, Android emulator, or Expo Go as usual.
+
+## Scripts
+
+- `npm run start` — Expo dev server  
+- `npm run ios` / `npm run android` / `npm run web` — platform shortcuts  
+- `npm run lint` — ESLint via Expo  
 
 ## Learn more
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- [Expo documentation](https://docs.expo.dev/)
+- [Expo Router](https://docs.expo.dev/router/introduction/)

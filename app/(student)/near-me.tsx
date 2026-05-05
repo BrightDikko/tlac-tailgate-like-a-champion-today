@@ -6,23 +6,10 @@ import { useGetCurrentGameQuery } from '@/src/api/endpoints/gamesApi';
 import { useGetTailgatesQuery } from '@/src/api/endpoints/tailgatesApi';
 import { placeImages } from '@/src/assets/images';
 import { AppHeader, Card, Screen, SectionHeader, SecondaryButton, TailgateCard } from '@/src/components';
-import { menuItems } from '@/src/data/demoData';
+import { messageFromUnknownError } from '@/src/utils/errorMessage';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
-
-function nearMeErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load nearby tailgates.';
-}
 
 function distanceValue(distance: string) {
   const match = distance.match(/[\d.]+/);
@@ -101,7 +88,9 @@ export default function NearMeTabScreen() {
         </Card>
       ) : isError ? (
         <Card variant="soft">
-          <Text style={styles.errorText}>{nearMeErrorMessage(combinedError)}</Text>
+          <Text style={styles.errorText}>
+            {messageFromUnknownError(combinedError, 'Could not load nearby tailgates.')}
+          </Text>
           <SecondaryButton label="Try again" onPress={() => void refetchNearMe()} style={styles.retryButton} />
         </Card>
       ) : (
@@ -116,7 +105,6 @@ export default function NearMeTabScreen() {
               <TailgateCard
                 key={tg.id}
                 tailgate={tg}
-                menuItems={menuItems}
                 onViewPress={() =>
                   router.push({ pathname: '/student/tailgate-detail', params: { tailgateId: tg.id } })
                 }

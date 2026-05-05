@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import {
@@ -9,11 +9,65 @@ import {
   SecondaryButton,
   SectionHeader,
 } from '@/src/components';
+import { useRemoteAuthGate } from '@/src/features/auth/remoteAuthGate';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
+import { paramOne } from '@/src/utils/routeParams';
+
+function parsePositiveInt(raw: string | undefined): number | null {
+  if (raw === undefined || raw.trim() === '') return null;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
 
 export default function SurplusPublishedScreen() {
+  const { shouldRedirectToLogin } = useRemoteAuthGate();
+  const params = useLocalSearchParams<{
+    tailgateId?: string;
+    tailgateName?: string;
+    itemsPublished?: string;
+    totalServings?: string;
+    pickupWindowMinutes?: string;
+    pickupNote?: string;
+  }>();
+
+  const tailgateId = paramOne(params.tailgateId);
+  const tailgateName = paramOne(params.tailgateName);
+  const itemsCount = parsePositiveInt(paramOne(params.itemsPublished));
+  const servingsTotal = parsePositiveInt(paramOne(params.totalServings));
+  const windowMinutes = parsePositiveInt(paramOne(params.pickupWindowMinutes));
+  const note = paramOne(params.pickupNote);
+
+  const itemsLine =
+    itemsCount !== null
+      ? `${itemsCount} item${itemsCount === 1 ? '' : 's'} published`
+      : 'Surplus listings published';
+
+  const servingsLine =
+    servingsTotal !== null
+      ? `${servingsTotal} total servings`
+      : 'Servings are listed for nearby pickups';
+
+  const windowLine =
+    windowMinutes !== null
+      ? `${windowMinutes}-minute pickup window`
+      : 'Pickup window set for new listings';
+
+  const noteLine =
+    note !== undefined && note.length > 0 ? `Pickup note: ${note}` : 'Pickup details were saved with your listings.';
+
+  const subtitleTailgate =
+    tailgateName !== undefined && tailgateName.length > 0
+      ? `Published under ${tailgateName}.`
+      : tailgateId !== undefined && tailgateId.length > 0
+        ? `Published for your tailgate listing.`
+        : 'Servings are listed for nearby pickups.';
+
+  if (shouldRedirectToLogin) {
+    return <Redirect href="/login" />;
+  }
+
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <HostBrandedHeader subtitle="Surplus published" />
@@ -22,19 +76,15 @@ export default function SurplusPublishedScreen() {
         <View style={styles.successCircle}>
           <Text style={styles.successIcon}>✓</Text>
         </View>
-        <SectionHeader
-          title="Surplus is live"
-          subtitle="Servings are listed for nearby pickups."
-          style={styles.header}
-        />
+        <SectionHeader title="Surplus is live" subtitle={subtitleTailgate} style={styles.header} />
       </View>
 
       <Card accentColor={colors.green}>
         <Text style={styles.summaryTitle}>Publish Summary</Text>
-        <Text style={styles.summaryLine}>2 items published</Text>
-        <Text style={styles.summaryLine}>20 total servings</Text>
-        <Text style={styles.summaryLine}>30-minute pickup window</Text>
-        <Text style={styles.summaryLine}>Pickup note: Blue tent near Stadium Lot B</Text>
+        <Text style={styles.summaryLine}>{itemsLine}</Text>
+        <Text style={styles.summaryLine}>{servingsLine}</Text>
+        <Text style={styles.summaryLine}>{windowLine}</Text>
+        <Text style={styles.summaryLine}>{noteLine}</Text>
       </Card>
 
       <Card variant="soft">
@@ -44,10 +94,7 @@ export default function SurplusPublishedScreen() {
         </Text>
       </Card>
 
-      <PrimaryButton
-        label="View surplus feed"
-        onPress={() => router.push('/surplus')}
-      />
+      <PrimaryButton label="View surplus feed" onPress={() => router.push('/surplus')} />
       <SecondaryButton label="Donate unclaimed surplus" onPress={() => router.push('/donate')} />
       <SecondaryButton label="Back to host dashboard" onPress={() => router.push('/dashboard')} />
     </Screen>

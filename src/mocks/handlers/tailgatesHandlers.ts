@@ -4,6 +4,7 @@ import type {
   CreateTailgateInput,
   PaginatedResponse,
   Tailgate,
+  TailgateDeleteResult,
   TailgateQueryParams,
   UpdateTailgateInput,
 } from '@/src/types';
@@ -132,9 +133,29 @@ export async function updateTailgate(
   return ok(merged);
 }
 
+export async function deleteTailgate(id: string): Promise<ApiResponse<TailgateDeleteResult> | ApiError> {
+  await mockDelay();
+  const index = mockDb.tailgates.findIndex((t) => t.id === id);
+  if (index === -1) {
+    return fail('Tailgate not found', 'NOT_FOUND');
+  }
+  const removedMenuItemIds = mockDb.menuItems.filter((m) => m.tailgateId === id).map((m) => m.id);
+  const removedSurplusIds = mockDb.surplusItems.filter((s) => s.tailgateId === id).map((s) => s.id);
+  mockDb.menuItems = mockDb.menuItems.filter((m) => m.tailgateId !== id);
+  mockDb.surplusItems = mockDb.surplusItems.filter((s) => s.tailgateId !== id);
+  mockDb.claims = mockDb.claims.filter((c) => !removedSurplusIds.includes(c.surplusId));
+  mockDb.tailgates.splice(index, 1);
+  return ok({
+    tailgateId: id,
+    removedSurplusIds,
+    removedMenuItemIds,
+  });
+}
+
 export const tailgatesHandlers = {
   getTailgates,
   getTailgateById,
   createTailgate,
   updateTailgate,
+  deleteTailgate,
 };

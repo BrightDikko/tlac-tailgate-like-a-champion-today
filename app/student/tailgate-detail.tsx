@@ -1,3 +1,7 @@
+/**
+ * Tailgate discovery/detail is intentionally viewable without signing in so browse and deep links work.
+ * Sensitive actions or non-public data remain enforced by the API when applicable (not role-gated on the client).
+ */
 import { router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, Image, ImageBackground, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
 
@@ -14,29 +18,11 @@ import {
   SectionHeader,
   StatusChip,
 } from '@/src/components';
-import { reviews } from '@/src/data/demoData';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
-
-function paramOne(value: string | string[] | undefined): string | undefined {
-  if (value === undefined) return undefined;
-  const v = Array.isArray(value) ? value[0] : value;
-  return v === '' ? undefined : v;
-}
-
-function detailErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load tailgate details.';
-}
+import { messageFromUnknownError } from '@/src/utils/errorMessage';
+import { paramOne } from '@/src/utils/routeParams';
 
 export default function TailgateDetailScreen() {
   const params = useLocalSearchParams<{ tailgateId?: string | string[] }>();
@@ -67,7 +53,6 @@ export default function TailgateDetailScreen() {
   } = useGetCurrentGameQuery();
 
   const tailgateMenu = menuResponse?.data ?? [];
-  const topReview = reviews[0];
 
   const isLoading = tailgateLoading || menuLoading || gameLoading;
   const isError = tailgateError || menuError || gameError;
@@ -103,7 +88,9 @@ export default function TailgateDetailScreen() {
         </Card>
       ) : isError ? (
         <Card variant="soft">
-          <Text style={styles.errorText}>{detailErrorMessage(combinedError)}</Text>
+          <Text style={styles.errorText}>
+            {messageFromUnknownError(combinedError, 'Could not load tailgate details.')}
+          </Text>
           <SecondaryButton label="Try again" onPress={() => void refetchAll()} style={styles.retryButton} />
         </Card>
       ) : tailgate === undefined ? (
@@ -165,19 +152,18 @@ export default function TailgateDetailScreen() {
             />
           </View>
 
-          <SectionHeader title="Menu" subtitle="What Domer Grill Crew is preparing today." />
+          <SectionHeader title="Menu" subtitle={`What ${tailgate.groupName} is preparing today.`} />
           <View style={styles.menuList}>
             {tailgateMenu.map((item) => (
               <FoodItemCard key={item.id} item={item} status="active" />
             ))}
           </View>
 
-          <SectionHeader title="Top Review" />
+          <SectionHeader title="Reviews" subtitle="Guest ratings will show here." />
           <Card variant="soft">
-            <Text style={styles.reviewAuthor}>
-              {topReview.author} • {topReview.score}/5
+            <Text style={styles.reviewPlaceholder}>
+              Reviews will appear here as guests rate this tailgate.
             </Text>
-            <Text style={styles.reviewComment}>{topReview.comment}</Text>
           </Card>
 
           <SecondaryButton label="Get directions" disabled />
@@ -325,16 +311,11 @@ const styles = StyleSheet.create({
   menuList: {
     gap: spacing.md,
   },
-  reviewAuthor: {
-    color: colors.goldLight,
-    fontSize: typography.body,
-    fontWeight: '800',
-  },
-  reviewComment: {
-    marginTop: spacing.sm,
-    color: colors.text,
+  reviewPlaceholder: {
+    color: colors.muted,
     fontSize: typography.body,
     lineHeight: 22,
+    fontWeight: '600',
   },
   loadingBlock: {
     paddingVertical: spacing.xl,

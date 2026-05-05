@@ -1,35 +1,10 @@
-import type {
-  FetchBaseQueryError,
-  FetchBaseQueryMeta,
-  QueryReturnValue,
-} from '@reduxjs/toolkit/query';
-
 import { baseApi } from '@/src/api/baseApi';
+import { mapRatingRecord } from '@/src/api/mappers';
+import { fromMockApiResult, remoteToSingle } from '@/src/api/response';
 import { ratingsHandlers } from '@/src/mocks/handlers/ratingsHandlers';
 import { API_MODE } from '@/src/services/config/env';
 
 import type { ApiError, ApiResponse, RatingInput, RatingRecord } from '@/src/types';
-
-function fromApiResult<T>(
-  result: ApiResponse<T> | ApiError
-): QueryReturnValue<T, ApiError | FetchBaseQueryError, FetchBaseQueryMeta | undefined> {
-  if ('data' in result) {
-    return { data: result.data };
-  }
-  return { error: result };
-}
-
-function asRemoteRatingRecord(value: unknown): QueryReturnValue<
-  RatingRecord,
-  ApiError | FetchBaseQueryError,
-  FetchBaseQueryMeta | undefined
-> {
-  return value as QueryReturnValue<
-    RatingRecord,
-    ApiError | FetchBaseQueryError,
-    FetchBaseQueryMeta | undefined
-  >;
-}
 
 export const ratingsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -37,15 +12,9 @@ export const ratingsApi = baseApi.injectEndpoints({
       queryFn: async (input, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await ratingsHandlers.createRating(input);
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<RatingRecord> | ApiError);
         }
-        return asRemoteRatingRecord(
-          await baseQuery({
-            url: '/ratings',
-            method: 'POST',
-            body: input,
-          })
-        );
+        return remoteToSingle(await baseQuery({ url: '/ratings', method: 'POST', body: input }), mapRatingRecord);
       },
       invalidatesTags: (_result, _error, input) => [
         { type: 'Rating', id: 'LIST' },

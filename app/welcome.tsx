@@ -1,14 +1,31 @@
 
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
-import { Card, PrimaryButton, Screen } from '@/src/components';
+import { useDemoLoginMutation } from '@/src/api/endpoints/authApi';
 import { brandImages } from '@/src/assets/images';
+import { Card, PrimaryButton, Screen, SecondaryButton } from '@/src/components';
+import { API_MODE } from '@/src/services/config/env';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
+import { messageFromUnknownError } from '@/src/utils/errorMessage';
 
 export default function WelcomeScreen() {
+  const [demoLogin, { isLoading: demoLoading }] = useDemoLoginMutation();
+  const [demoError, setDemoError] = useState<string | null>(null);
+
+  const onContinueDemo = async () => {
+    setDemoError(null);
+    try {
+      await demoLogin().unwrap();
+      router.replace('/role-select');
+    } catch (err) {
+      setDemoError(messageFromUnknownError(err, 'Could not start Demo Mode. Please try again.'));
+    }
+  };
+
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <View style={styles.logoWrap}>
@@ -42,7 +59,22 @@ export default function WelcomeScreen() {
         </Card>
       </View>
 
-      <PrimaryButton label="Get Started" onPress={() => router.push('/role-select')} />
+      <PrimaryButton label="Sign in" onPress={() => router.push('/login')} />
+      <SecondaryButton label="Create account" onPress={() => router.push('/register')} />
+      {API_MODE === 'mock' ? (
+        <>
+          {demoError !== null ? (
+            <Card variant="soft" accentColor={colors.navy}>
+              <Text style={styles.demoErrorText}>{demoError}</Text>
+            </Card>
+          ) : null}
+          <SecondaryButton
+            label={demoLoading ? 'Starting demo…' : 'Continue in Demo Mode'}
+            onPress={() => void onContinueDemo()}
+            disabled={demoLoading}
+          />
+        </>
+      ) : null}
     </Screen>
   );
 }
@@ -90,5 +122,11 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: typography.body,
     lineHeight: 23,
+  },
+  demoErrorText: {
+    color: colors.muted,
+    fontSize: typography.body,
+    lineHeight: 22,
+    textAlign: 'center',
   },
 });

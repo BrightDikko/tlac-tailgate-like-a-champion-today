@@ -1,42 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 
 import { useGetDonationCenterByIdQuery } from '@/src/api/endpoints/donationCentersApi';
 import { placeholderImages } from '@/src/assets/images';
 import { Card, FilterChip, PrimaryButton, Screen, SecondaryButton } from '@/src/components';
+import { useRemoteAuthGate } from '@/src/features/auth/remoteAuthGate';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
-import { paramOne } from '@/src/utils/routeParams';
 import { acceptedCategoriesForCenter, categoryLabel } from '@/src/utils/donationCategories';
-
-function detailErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load donation center.';
-}
-
-function isNotFoundError(err: unknown): boolean {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null) {
-      if ('code' in d && (d as { code?: string }).code === 'NOT_FOUND') return true;
-      const msg = 'message' in d ? String((d as { message: string }).message).toLowerCase() : '';
-      if (msg.includes('not found')) return true;
-    }
-  }
-  return false;
-}
+import { isNotFoundError, messageFromUnknownError } from '@/src/utils/errorMessage';
+import { paramOne } from '@/src/utils/routeParams';
 
 export default function DonationCenterDetailScreen() {
+  const { shouldRedirectToLogin } = useRemoteAuthGate();
   const params = useLocalSearchParams<{ donationCenterId?: string | string[] }>();
   const centerId = paramOne(params.donationCenterId) ?? 'center-1';
 
@@ -47,6 +25,10 @@ export default function DonationCenterDetailScreen() {
     error,
     refetch,
   } = useGetDonationCenterByIdQuery(centerId, { skip: !centerId });
+
+  if (shouldRedirectToLogin) {
+    return <Redirect href="/login" />;
+  }
 
   return (
     <Screen scroll contentContainerStyle={styles.content}>
@@ -64,7 +46,7 @@ export default function DonationCenterDetailScreen() {
         </Card>
       ) : isError ? (
         <Card variant="soft">
-          <Text style={styles.errorText}>{detailErrorMessage(error)}</Text>
+          <Text style={styles.errorText}>{messageFromUnknownError(error, 'Could not load donation center.')}</Text>
           {isNotFoundError(error) ? (
             <SecondaryButton label="Back to Donate" onPress={() => router.push('/donate')} style={styles.retryButton} />
           ) : (

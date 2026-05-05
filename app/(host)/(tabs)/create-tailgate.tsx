@@ -8,10 +8,7 @@ import {
   Text,
   TextInput,
   View,
-  type ImageSourcePropType,
 } from 'react-native';
-
-import { foodImages, placeholderImages, tailgateImages } from '@/src/assets/images';
 import { useGetMeQuery } from '@/src/api/endpoints/authApi';
 import { useCreateMenuItemMutation } from '@/src/api/endpoints/menuApi';
 import { useCreateTailgateMutation } from '@/src/api/endpoints/tailgatesApi';
@@ -21,13 +18,18 @@ import { colors } from '@/src/theme/colors';
 import { radii } from '@/src/theme/radii';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
-
-const CATEGORY_OPTIONS: { value: FoodCategory; label: string }[] = [
-  { value: 'entree', label: 'Entree' },
-  { value: 'side', label: 'Side' },
-  { value: 'drink', label: 'Drink' },
-  { value: 'dessert', label: 'Dessert' },
-];
+import { messageFromUnknownError } from '@/src/utils/errorMessage';
+import {
+  CATEGORY_OPTIONS,
+  FOOD_IMAGE_KEYS,
+  FOOD_IMAGE_LABELS,
+  foodThumbSource,
+  labelFromKey,
+  TAILGATE_IMAGE_KEYS,
+  TAILGATE_IMAGE_LABELS,
+  tailgatePreviewSource,
+  validateMenuItemFields,
+} from '@/src/utils/hostTailgateForm';
 
 type DraftMenuItem = {
   localId: string;
@@ -38,68 +40,8 @@ type DraftMenuItem = {
   imageKey?: string;
 };
 
-const TAILGATE_IMAGE_KEYS = Object.keys(tailgateImages) as (keyof typeof tailgateImages)[];
-const FOOD_IMAGE_KEYS = Object.keys(foodImages) as (keyof typeof foodImages)[];
-
-const TAILGATE_IMAGE_LABELS: Record<string, string> = {
-  'domer-grill-crew': 'Domer grill crew',
-  'gold-lot-bbq-smoke': 'Gold lot BBQ smoke',
-  'irish-veggie-table': 'Irish veggie table',
-  'touchdown-taco-cantina': 'Touchdown taco cantina',
-  'zahm-dogs-chili': 'Zahm dogs and chili',
-};
-
-const FOOD_IMAGE_LABELS: Record<string, string> = {
-  'blue-gold-cupcakes': 'Blue and gold cupcakes',
-  'domer-smashburgers': 'Domer smashburgers',
-  'four-cheese-mac': 'Four-cheese mac',
-  'fudge-brownies': 'Fudge brownies',
-  'lemonade-and-iced-tea': 'Lemonade and iced tea',
-  'roasted-veggie-tacos': 'Roasted veggie tacos',
-  'smoked-brisket': 'Smoked brisket',
-  'smoked-wings': 'Smoked wings',
-  'stadium-brats': 'Stadium brats',
-};
-
-function sentenceCase(value: string): string {
-  const trimmed = value.trim();
-  if (trimmed.length === 0) return trimmed;
-  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
-}
-
-function labelFromKey(key: string, labels?: Record<string, string>): string {
-  return labels?.[key] ?? sentenceCase(key.replace(/-/g, ' '));
-}
-
-function tailgatePreviewSource(key: string | undefined): ImageSourcePropType {
-  if (key !== undefined && key in tailgateImages) {
-    return tailgateImages[key as keyof typeof tailgateImages];
-  }
-  return placeholderImages.tailgate;
-}
-
-function foodThumbSource(key: string | undefined): ImageSourcePropType {
-  if (key !== undefined && key in foodImages) {
-    return foodImages[key as keyof typeof foodImages];
-  }
-  return placeholderImages.emptyVenue;
-}
-
 function newLocalId(): string {
   return `draft-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function mutationErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not create tailgate.';
 }
 
 function deriveAvatarInitials(name: string): string {
@@ -111,15 +53,6 @@ function deriveAvatarInitials(name: string): string {
   if (s.length >= 2) return s.slice(0, 2).toUpperCase();
   if (s.length === 1) return s.toUpperCase();
   return 'TL';
-}
-
-function validateDraftMenuFields(name: string, description: string, qtyRaw: string, category: FoodCategory | null) {
-  if (name.trim() === '') return 'Menu item name is required.';
-  if (description.trim() === '') return 'Menu description is required.';
-  if (category === null) return 'Pick a category.';
-  const q = Number.parseInt(qtyRaw, 10);
-  if (!Number.isFinite(q) || q < 1) return 'Quantity must be a positive integer.';
-  return null;
 }
 
 export default function CreateTailgateScreen() {
@@ -174,7 +107,7 @@ export default function CreateTailgateScreen() {
 
   const handleAddOrSaveDraft = () => {
     setValidationError(null);
-    const err = validateDraftMenuFields(menuFormName, menuFormDescription, menuFormQty, menuFormCategory);
+    const err = validateMenuItemFields(menuFormName, menuFormDescription, menuFormQty, menuFormCategory);
     if (err !== null) {
       setValidationError(err);
       return;
@@ -325,7 +258,7 @@ export default function CreateTailgateScreen() {
 
       {meError ? (
         <Card variant="soft">
-          <Text style={styles.errorText}>{mutationErrorMessage(meErr)}</Text>
+          <Text style={styles.errorText}>{messageFromUnknownError(meErr, 'Could not create tailgate.')}</Text>
         </Card>
       ) : null}
 
@@ -343,13 +276,13 @@ export default function CreateTailgateScreen() {
 
       {createError ? (
         <Card variant="soft">
-          <Text style={styles.errorText}>{mutationErrorMessage(createError)}</Text>
+          <Text style={styles.errorText}>{messageFromUnknownError(createError, 'Could not create tailgate.')}</Text>
         </Card>
       ) : null}
 
       {menuItemError && !menuBatchError ? (
         <Card variant="soft">
-          <Text style={styles.errorText}>{mutationErrorMessage(menuItemError)}</Text>
+          <Text style={styles.errorText}>{messageFromUnknownError(menuItemError, 'Could not create tailgate.')}</Text>
         </Card>
       ) : null}
 

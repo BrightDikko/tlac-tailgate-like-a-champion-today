@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 
+import { useRemoteAuthGate } from '@/src/features/auth/remoteAuthGate';
 import { appTabBarScreenOptions } from '@/src/theme/tabBar';
 
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -20,6 +21,13 @@ function tabIcon(filled: IconName, outline: IconName, { focused, color, size }: 
 }
 
 export default function HostShellLayout() {
+  /* Student/Fan and host experiences can overlap, so role is not used as a hard frontend gate. */
+  const { shouldRedirectToLogin } = useRemoteAuthGate();
+
+  if (shouldRedirectToLogin) {
+    return <Redirect href="/login" />;
+  }
+
   return (
     <Tabs initialRouteName="dashboard" screenOptions={appTabBarScreenOptions}>
       <Tabs.Screen

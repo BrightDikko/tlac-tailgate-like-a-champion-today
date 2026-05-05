@@ -23,6 +23,7 @@ import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
 import type { ClaimRecord, GamePhase, SurplusItem } from '@/src/types';
+import { messageFromUnknownError } from '@/src/utils/errorMessage';
 
 type SurplusFilter = 'available' | 'almost_gone' | 'my_pickups' | 'claimed' | 'all';
 
@@ -36,19 +37,6 @@ const FILTER_OPTIONS: { key: SurplusFilter; label: string }[] = [
 
 function phaseLabel(phase: GamePhase) {
   return phase === 'postgame' ? 'Post-game' : 'Pregame';
-}
-
-function surplusErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load surplus items.';
 }
 
 function isClaimable(item: SurplusItem): boolean {
@@ -231,7 +219,7 @@ export default function SurplusTabScreen() {
         </Card>
       ) : hasQueryError ? (
         <Card variant="soft" accentColor={colors.navy}>
-          <Text style={styles.errorText}>{surplusErrorMessage(combinedError)}</Text>
+          <Text style={styles.errorText}>{messageFromUnknownError(combinedError, 'Could not load surplus items.')}</Text>
           <SecondaryButton label="Try again" onPress={() => void refetchAll()} style={styles.retryButton} />
         </Card>
       ) : (
@@ -313,7 +301,7 @@ export default function SurplusTabScreen() {
 
           {claimError ? (
             <Card variant="soft" accentColor={colors.navy}>
-              <Text style={styles.claimErrorText}>{surplusErrorMessage(claimError)}</Text>
+              <Text style={styles.claimErrorText}>{messageFromUnknownError(claimError, 'Could not load surplus items.')}</Text>
             </Card>
           ) : null}
 

@@ -14,19 +14,7 @@ import {
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
-
-function impactErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load impact data.';
-}
+import { messageFromUnknownError } from '@/src/utils/errorMessage';
 
 export default function ImpactTabScreen() {
   const {
@@ -67,7 +55,7 @@ export default function ImpactTabScreen() {
         </Card>
       ) : isError ? (
         <Card variant="soft">
-          <Text style={styles.errorText}>{impactErrorMessage(error)}</Text>
+          <Text style={styles.errorText}>{messageFromUnknownError(error, 'Could not load impact data.')}</Text>
           <SecondaryButton label="Try again" onPress={() => void refetch()} style={styles.retryButton} />
         </Card>
       ) : impact !== undefined ? (
@@ -102,9 +90,38 @@ export default function ImpactTabScreen() {
 
       <Card variant="soft" accentColor={colors.gold}>
         <Text style={styles.todayTitle}>Today on TLAC</Text>
-        <Text style={styles.todayLine}>Your pickup helped save 2 servings.</Text>
-        <Text style={styles.todayLine}>Domer Grill Crew kept surplus food in the community.</Text>
-        <Text style={styles.todayLine}>TLAC turns gameday abundance into shared impact.</Text>
+        {isLoading ? (
+          <>
+            <Text style={styles.todayLine}>Loading your impact snapshot…</Text>
+            <Text style={styles.todayLine}>Totals update as you claim and confirm surplus pickups.</Text>
+            <Text style={styles.todayLine}>TLAC turns gameday abundance into shared impact.</Text>
+          </>
+        ) : isError ? (
+          <>
+            <Text style={styles.todayLine}>Live impact totals are not available right now.</Text>
+            <Text style={styles.todayLine}>Try again above when you are back online.</Text>
+            <Text style={styles.todayLine}>TLAC turns gameday abundance into shared impact.</Text>
+          </>
+        ) : impact !== undefined ? (
+          <>
+            <Text style={styles.todayLine}>
+              From your loaded totals: {impact.servingsClaimed} serving
+              {impact.servingsClaimed === 1 ? '' : 's'} claimed, {impact.poundsDonated} lb donated.
+            </Text>
+            <Text style={styles.todayLine}>
+              {impact.participatingTailgates} participating tailgate
+              {impact.participatingTailgates === 1 ? '' : 's'}, {impact.studentPickups} student pickup
+              {impact.studentPickups === 1 ? '' : 's'}, {impact.donationCentersSupported} donation partner
+              {impact.donationCentersSupported === 1 ? '' : 's'} supported.
+            </Text>
+            <Text style={styles.todayLine}>TLAC turns gameday abundance into shared impact.</Text>
+          </>
+        ) : (
+          <>
+            <Text style={styles.todayLine}>Impact totals will show here once data is available.</Text>
+            <Text style={styles.todayLine}>TLAC turns gameday abundance into shared impact.</Text>
+          </>
+        )}
       </Card>
 
       <SecondaryButton label="Back to welcome" onPress={() => router.push('/welcome')} />

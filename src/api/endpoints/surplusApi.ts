@@ -1,10 +1,6 @@
-import type {
-  FetchBaseQueryError,
-  FetchBaseQueryMeta,
-  QueryReturnValue,
-} from '@reduxjs/toolkit/query';
-
 import { baseApi } from '@/src/api/baseApi';
+import { mapSurplusItem } from '@/src/api/mappers';
+import { fromMockApiResult, remoteToPaginated, remoteToSingle } from '@/src/api/response';
 import { surplusHandlers } from '@/src/mocks/handlers/surplusHandlers';
 import { API_MODE } from '@/src/services/config/env';
 
@@ -18,39 +14,6 @@ import type {
   UpdateSurplusInput,
 } from '@/src/types';
 
-function fromApiResult<T>(
-  result: ApiResponse<T> | ApiError
-): QueryReturnValue<T, ApiError | FetchBaseQueryError, FetchBaseQueryMeta | undefined> {
-  if ('data' in result) {
-    return { data: result.data };
-  }
-  return { error: result };
-}
-
-function asRemoteList(value: unknown): QueryReturnValue<
-  PaginatedResponse<SurplusItem>,
-  ApiError | FetchBaseQueryError,
-  FetchBaseQueryMeta | undefined
-> {
-  return value as QueryReturnValue<
-    PaginatedResponse<SurplusItem>,
-    ApiError | FetchBaseQueryError,
-    FetchBaseQueryMeta | undefined
-  >;
-}
-
-function asRemoteItem(value: unknown): QueryReturnValue<
-  SurplusItem,
-  ApiError | FetchBaseQueryError,
-  FetchBaseQueryMeta | undefined
-> {
-  return value as QueryReturnValue<
-    SurplusItem,
-    ApiError | FetchBaseQueryError,
-    FetchBaseQueryMeta | undefined
-  >;
-}
-
 export const surplusApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getSurplus: builder.query<PaginatedResponse<SurplusItem>, SurplusQueryParams | void>({
@@ -59,13 +22,7 @@ export const surplusApi = baseApi.injectEndpoints({
           const data = await surplusHandlers.getSurplus(arg ?? undefined);
           return { data };
         }
-        return asRemoteList(
-          await baseQuery({
-            url: '/surplus',
-            method: 'GET',
-            params: arg ?? {},
-          })
-        );
+        return remoteToPaginated(await baseQuery({ url: '/surplus', method: 'GET', params: arg ?? {} }), mapSurplusItem);
       },
       providesTags: (result) => {
         const listTag = { type: 'Surplus' as const, id: 'LIST' as const };
@@ -84,14 +41,9 @@ export const surplusApi = baseApi.injectEndpoints({
       queryFn: async (id, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await surplusHandlers.getSurplusById(id);
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<SurplusItem> | ApiError);
         }
-        return asRemoteItem(
-          await baseQuery({
-            url: `/surplus/${id}`,
-            method: 'GET',
-          })
-        );
+        return remoteToSingle(await baseQuery({ url: `/surplus/${id}`, method: 'GET' }), mapSurplusItem);
       },
       providesTags: (_result, _error, id) => [{ type: 'Surplus' as const, id }],
     }),
@@ -100,15 +52,9 @@ export const surplusApi = baseApi.injectEndpoints({
       queryFn: async (body, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await surplusHandlers.createSurplus(body);
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<SurplusItem> | ApiError);
         }
-        return asRemoteItem(
-          await baseQuery({
-            url: '/surplus',
-            method: 'POST',
-            body,
-          })
-        );
+        return remoteToSingle(await baseQuery({ url: '/surplus', method: 'POST', body }), mapSurplusItem);
       },
       invalidatesTags: [{ type: 'Surplus', id: 'LIST' }],
     }),
@@ -120,19 +66,35 @@ export const surplusApi = baseApi.injectEndpoints({
       queryFn: async ({ id, input }, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await surplusHandlers.updateSurplus(id, input);
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<SurplusItem> | ApiError);
         }
-        return asRemoteItem(
-          await baseQuery({
-            url: `/surplus/${id}`,
-            method: 'PATCH',
-            body: input,
-          })
-        );
+        return remoteToSingle(await baseQuery({ url: `/surplus/${id}`, method: 'PATCH', body: input }), mapSurplusItem);
       },
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Surplus', id },
         { type: 'Surplus', id: 'LIST' },
+      ],
+    }),
+
+    closeSurplus: builder.mutation<SurplusItem, string>({
+      queryFn: async (id, _api, _extraOptions, baseQuery) => {
+        if (API_MODE === 'mock') {
+          const result = await surplusHandlers.closeSurplus(id);
+          return fromMockApiResult(result as ApiResponse<SurplusItem> | ApiError);
+        }
+        return remoteToSingle(
+          await baseQuery({
+            url: `/surplus/${id}`,
+            method: 'PATCH',
+            body: { status: 'expired', servingsRemaining: 0 },
+          }),
+          mapSurplusItem
+        );
+      },
+      invalidatesTags: (_result, _error, id) => [
+        { type: 'Surplus', id },
+        { type: 'Surplus', id: 'LIST' },
+        { type: 'Claim', id: 'LIST' },
       ],
     }),
   }),
@@ -143,4 +105,5 @@ export const {
   useGetSurplusByIdQuery,
   useCreateSurplusMutation,
   useUpdateSurplusMutation,
+  useCloseSurplusMutation,
 } = surplusApi;

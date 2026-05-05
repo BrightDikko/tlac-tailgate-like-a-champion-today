@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { useCreateDonationMutation } from '@/src/api/endpoints/donationsApi';
 import { useGetDonationCentersQuery } from '@/src/api/endpoints/donationCentersApi';
 import { useGetSurplusQuery } from '@/src/api/endpoints/surplusApi';
 import { Card, PrimaryButton, Screen, SecondaryButton } from '@/src/components';
+import { useRemoteAuthGate } from '@/src/features/auth/remoteAuthGate';
 import type { DonationCategory, SurplusItem } from '@/src/types';
 import { colors } from '@/src/theme/colors';
 import { radii } from '@/src/theme/radii';
@@ -18,36 +19,11 @@ import {
   categoryLabel,
   centerAcceptsCategory,
 } from '@/src/utils/donationCategories';
+import { messageFromUnknownError } from '@/src/utils/errorMessage';
 import { paramOne } from '@/src/utils/routeParams';
 
 const DEFAULT_NOTES = 'Kept covered and chilled until drop-off.';
 const DEFAULT_PACKAGED_DESCRIPTION = 'Bottled water and sealed soda';
-
-function donationErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not log donation.';
-}
-
-function queryErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load donation details.';
-}
 
 function surplusEligible(s: SurplusItem): boolean {
   return s.status === 'available' || s.status === 'almost_gone';
@@ -62,6 +38,7 @@ function statusLabel(status: SurplusItem['status']): string {
 }
 
 export default function LogDonationScreen() {
+  const { shouldRedirectToLogin } = useRemoteAuthGate();
   const params = useLocalSearchParams<{
     donationCenterId?: string | string[];
     centerId?: string | string[];
@@ -161,6 +138,10 @@ export default function LogDonationScreen() {
     }
   }, [selectedCenter, pickedCategory]);
 
+  if (shouldRedirectToLogin) {
+    return <Redirect href="/login" />;
+  }
+
   const refetchAll = () => {
     void refetchSurplus();
     void refetchCenters();
@@ -235,7 +216,7 @@ export default function LogDonationScreen() {
     </Card>
   ) : queriesError ? (
     <Card variant="soft">
-      <Text style={styles.errorText}>{queryErrorMessage(combinedQueryError)}</Text>
+      <Text style={styles.errorText}>{messageFromUnknownError(combinedQueryError, 'Could not load donation details.')}</Text>
       <SecondaryButton label="Try again" onPress={() => void refetchAll()} style={styles.retryButton} />
     </Card>
   ) : centersList.length === 0 ? (
@@ -409,7 +390,7 @@ export default function LogDonationScreen() {
 
       {donationError ? (
         <Card variant="soft" accentColor={colors.navy}>
-          <Text style={styles.errorText}>{donationErrorMessage(donationError)}</Text>
+          <Text style={styles.errorText}>{messageFromUnknownError(donationError, 'Could not log donation.')}</Text>
         </Card>
       ) : null}
 

@@ -1,10 +1,11 @@
-import type {
-  FetchBaseQueryError,
-  FetchBaseQueryMeta,
-  QueryReturnValue,
-} from '@reduxjs/toolkit/query';
-
 import { baseApi } from '@/src/api/baseApi';
+import { mapFoodItem } from '@/src/api/mappers';
+import {
+  fromMockApiResult,
+  remoteToMenuItemDeleteResult,
+  remoteToPaginated,
+  remoteToSingle,
+} from '@/src/api/response';
 import { menuHandlers } from '@/src/mocks/handlers/menuHandlers';
 import { API_MODE } from '@/src/services/config/env';
 
@@ -13,43 +14,11 @@ import type {
   ApiResponse,
   CreateMenuItemInput,
   FoodItem,
+  MenuItemDeleteResult,
   MenuQueryParams,
   PaginatedResponse,
   UpdateMenuItemInput,
 } from '@/src/types';
-
-function fromApiResult<T>(
-  result: ApiResponse<T> | ApiError
-): QueryReturnValue<T, ApiError | FetchBaseQueryError, FetchBaseQueryMeta | undefined> {
-  if ('data' in result) {
-    return { data: result.data };
-  }
-  return { error: result };
-}
-
-function asRemoteMenuList(value: unknown): QueryReturnValue<
-  PaginatedResponse<FoodItem>,
-  ApiError | FetchBaseQueryError,
-  FetchBaseQueryMeta | undefined
-> {
-  return value as QueryReturnValue<
-    PaginatedResponse<FoodItem>,
-    ApiError | FetchBaseQueryError,
-    FetchBaseQueryMeta | undefined
-  >;
-}
-
-function asRemoteMenuItem(value: unknown): QueryReturnValue<
-  FoodItem,
-  ApiError | FetchBaseQueryError,
-  FetchBaseQueryMeta | undefined
-> {
-  return value as QueryReturnValue<
-    FoodItem,
-    ApiError | FetchBaseQueryError,
-    FetchBaseQueryMeta | undefined
-  >;
-}
 
 export const menuApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -62,12 +31,13 @@ export const menuApi = baseApi.injectEndpoints({
           const data = await menuHandlers.getMenuByTailgateId(tailgateId, params);
           return { data };
         }
-        return asRemoteMenuList(
+        return remoteToPaginated(
           await baseQuery({
             url: `/tailgates/${tailgateId}/menu`,
             method: 'GET',
             params: params ?? {},
-          })
+          }),
+          mapFoodItem
         );
       },
       providesTags: (result, _error, arg) => {
@@ -93,14 +63,15 @@ export const menuApi = baseApi.injectEndpoints({
       queryFn: async ({ tailgateId, input }, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await menuHandlers.createMenuItem(tailgateId, input);
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<FoodItem> | ApiError);
         }
-        return asRemoteMenuItem(
+        return remoteToSingle(
           await baseQuery({
             url: `/tailgates/${tailgateId}/menu`,
             method: 'POST',
             body: input,
-          })
+          }),
+          mapFoodItem
         );
       },
       invalidatesTags: (_result, _error, { tailgateId }) => [
@@ -115,20 +86,36 @@ export const menuApi = baseApi.injectEndpoints({
       queryFn: async ({ id, input }, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await menuHandlers.updateMenuItem(id, input);
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<FoodItem> | ApiError);
         }
-        return asRemoteMenuItem(
-          await baseQuery({
-            url: `/menu-items/${id}`,
-            method: 'PATCH',
-            body: input,
-          })
-        );
+        return remoteToSingle(await baseQuery({ url: `/menu-items/${id}`, method: 'PATCH', body: input }), mapFoodItem);
       },
       invalidatesTags: (_result, _error, { id }) => [{ type: 'Menu', id }],
+    }),
+
+    deleteMenuItem: builder.mutation<MenuItemDeleteResult, { id: string; tailgateId: string }>({
+      queryFn: async ({ id, tailgateId }, _api, _extraOptions, baseQuery) => {
+        if (API_MODE === 'mock') {
+          const result = await menuHandlers.deleteMenuItem(id);
+          return fromMockApiResult(result as ApiResponse<MenuItemDeleteResult> | ApiError);
+        }
+        return remoteToMenuItemDeleteResult(
+          await baseQuery({ url: `/menu-items/${id}`, method: 'DELETE' }),
+          { id, tailgateId }
+        );
+      },
+      invalidatesTags: (_result, _error, { id, tailgateId }) => [
+        { type: 'Menu', id },
+        { type: 'Menu', id: `TAILGATE-${tailgateId}` },
+        { type: 'Tailgate', id: 'LIST' },
+      ],
     }),
   }),
 });
 
-export const { useGetMenuByTailgateIdQuery, useCreateMenuItemMutation, useUpdateMenuItemMutation } =
-  menuApi;
+export const {
+  useGetMenuByTailgateIdQuery,
+  useCreateMenuItemMutation,
+  useUpdateMenuItemMutation,
+  useDeleteMenuItemMutation,
+} = menuApi;

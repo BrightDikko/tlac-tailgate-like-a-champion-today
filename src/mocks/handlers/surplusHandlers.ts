@@ -93,9 +93,28 @@ export async function updateSurplus(
   return ok(merged);
 }
 
+/** Archive-style close: listing stays in history but is no longer claimable. */
+export async function closeSurplus(id: string): Promise<ApiResponse<SurplusItem> | ApiError> {
+  await mockDelay();
+  const index = mockDb.surplusItems.findIndex((item) => item.id === id);
+  if (index === -1) {
+    return fail('Surplus item not found', 'NOT_FOUND');
+  }
+  const existing = mockDb.surplusItems[index];
+  const merged: SurplusItem = {
+    ...existing,
+    status: 'expired',
+    servingsRemaining: 0,
+    id: existing.id,
+  };
+  mockDb.surplusItems[index] = merged;
+  return ok(merged);
+}
+
 export const surplusHandlers = {
   getSurplus,
   getSurplusById,
   createSurplus,
   updateSurplus,
+  closeSurplus,
 };

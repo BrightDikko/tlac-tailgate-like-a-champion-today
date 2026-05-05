@@ -1,52 +1,10 @@
-import type {
-  FetchBaseQueryError,
-  FetchBaseQueryMeta,
-  QueryReturnValue,
-} from '@reduxjs/toolkit/query';
-
 import { baseApi } from '@/src/api/baseApi';
+import { mapDonationCenter } from '@/src/api/mappers';
+import { fromMockApiResult, remoteToPaginated, remoteToSingle } from '@/src/api/response';
 import { donationCentersHandlers } from '@/src/mocks/handlers/donationCentersHandlers';
 import { API_MODE } from '@/src/services/config/env';
 
-import type {
-  ApiError,
-  ApiResponse,
-  DonationCenter,
-  PaginatedResponse,
-} from '@/src/types';
-
-function fromApiResult<T>(
-  result: ApiResponse<T> | ApiError
-): QueryReturnValue<T, ApiError | FetchBaseQueryError, FetchBaseQueryMeta | undefined> {
-  if ('data' in result) {
-    return { data: result.data };
-  }
-  return { error: result };
-}
-
-function asRemoteDonationCenterList(value: unknown): QueryReturnValue<
-  PaginatedResponse<DonationCenter>,
-  ApiError | FetchBaseQueryError,
-  FetchBaseQueryMeta | undefined
-> {
-  return value as QueryReturnValue<
-    PaginatedResponse<DonationCenter>,
-    ApiError | FetchBaseQueryError,
-    FetchBaseQueryMeta | undefined
-  >;
-}
-
-function asRemoteDonationCenter(value: unknown): QueryReturnValue<
-  DonationCenter,
-  ApiError | FetchBaseQueryError,
-  FetchBaseQueryMeta | undefined
-> {
-  return value as QueryReturnValue<
-    DonationCenter,
-    ApiError | FetchBaseQueryError,
-    FetchBaseQueryMeta | undefined
-  >;
-}
+import type { ApiError, ApiResponse, DonationCenter, PaginatedResponse } from '@/src/types';
 
 export const donationCentersApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -59,12 +17,13 @@ export const donationCentersApi = baseApi.injectEndpoints({
           const data = await donationCentersHandlers.getDonationCenters(arg ?? undefined);
           return { data };
         }
-        return asRemoteDonationCenterList(
+        return remoteToPaginated(
           await baseQuery({
             url: '/donation-centers',
             method: 'GET',
             params: arg ?? {},
-          })
+          }),
+          mapDonationCenter
         );
       },
       providesTags: (result) => {
@@ -84,14 +43,9 @@ export const donationCentersApi = baseApi.injectEndpoints({
       queryFn: async (id, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await donationCentersHandlers.getDonationCenterById(id);
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<DonationCenter> | ApiError);
         }
-        return asRemoteDonationCenter(
-          await baseQuery({
-            url: `/donation-centers/${id}`,
-            method: 'GET',
-          })
-        );
+        return remoteToSingle(await baseQuery({ url: `/donation-centers/${id}`, method: 'GET' }), mapDonationCenter);
       },
       providesTags: (_result, _error, id) => [{ type: 'DonationCenter' as const, id }],
     }),

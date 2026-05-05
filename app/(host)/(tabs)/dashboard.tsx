@@ -27,22 +27,10 @@ import type { GamePhase, Tailgate, TailgateImageTone } from '@/src/types';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
+import { messageFromUnknownError } from '@/src/utils/errorMessage';
 
 function phaseLabel(phase: GamePhase) {
   return phase === 'postgame' ? 'Post-game' : 'Pregame';
-}
-
-function dashboardErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load dashboard data.';
 }
 
 function countByStatus(tailgates: Tailgate[], status: Tailgate['status']) {
@@ -137,7 +125,7 @@ export default function HostDashboardTabScreen() {
 
       {hasQueryError ? (
         <Card variant="soft">
-          <Text style={styles.helperCopy}>{dashboardErrorMessage(combinedQueryError)}</Text>
+          <Text style={styles.helperCopy}>{messageFromUnknownError(combinedQueryError, 'Could not load dashboard data.')}</Text>
           <SecondaryButton label="Try again" onPress={() => void refetchDashboard()} />
         </Card>
       ) : null}

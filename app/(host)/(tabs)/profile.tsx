@@ -1,17 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
 
-import { useGetMeQuery } from '@/src/api/endpoints/authApi';
+import { useGetMeQuery, useLogoutMutation } from '@/src/api/endpoints/authApi';
 import { useGetMyImpactQuery } from '@/src/api/endpoints/impactApi';
 import { useGetSurplusQuery } from '@/src/api/endpoints/surplusApi';
 import { useGetTailgatesQuery } from '@/src/api/endpoints/tailgatesApi';
 import { avatarImages } from '@/src/assets/images';
 import { Card, HostBrandedHeader, PrimaryButton, Screen, SecondaryButton } from '@/src/components';
+import { selectIsAuthenticated } from '@/src/features/auth/authSelectors';
+import { useAppSelector } from '@/src/redux/hooks';
+import { API_MODE } from '@/src/services/config/env';
 import type { CurrentUser } from '@/src/types';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
+import { messageFromUnknownError } from '@/src/utils/errorMessage';
 
 function displayNameFor(user?: CurrentUser): string {
   const explicit = user?.displayName?.trim();
@@ -37,19 +42,6 @@ function avatarSourceFor(user?: CurrentUser): ImageSourcePropType | undefined {
   return (avatarImages as Record<string, ImageSourcePropType>)[key];
 }
 
-function profileErrorMessage(err: unknown): string {
-  if (err && typeof err === 'object' && 'data' in err) {
-    const d = (err as { data: unknown }).data;
-    if (d && typeof d === 'object' && d !== null && 'message' in d) {
-      return String((d as { message: string }).message);
-    }
-  }
-  if (err && typeof err === 'object' && 'message' in err) {
-    return String((err as { message: string }).message);
-  }
-  return 'Could not load host profile data.';
-}
-
 function roleLineFor(user?: CurrentUser): string {
   const affiliation = user?.affiliationLabel?.trim();
   if (!affiliation) return 'Host · TLAC gameday coordinator';
@@ -58,13 +50,19 @@ function roleLineFor(user?: CurrentUser): string {
 }
 
 export default function HostProfileTabScreen() {
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const skipMeQuery = API_MODE === 'remote' && !isAuthenticated;
+
   const {
     data: currentUser,
     isLoading: meLoading,
     isError: meError,
     error: meErr,
     refetch: refetchMe,
-  } = useGetMeQuery();
+  } = useGetMeQuery(undefined, { skip: skipMeQuery });
+
+  const [logout, { isLoading: logoutLoading }] = useLogoutMutation();
+  const [logoutError, setLogoutError] = useState<string | null>(null);
 
   const userId = currentUser?.id;
 
@@ -105,15 +103,27 @@ export default function HostProfileTabScreen() {
   const completedCount = hostTailgates.filter((t) => t.status === 'completed').length;
 
   const queriesLoading =
-    meLoading || (Boolean(userId) && (tailgatesLoading || surplusLoading || impactLoading));
+    (!skipMeQuery && meLoading) || (Boolean(userId) && (tailgatesLoading || surplusLoading || impactLoading));
   const hasQueryError = meError || (Boolean(userId) && (tailgatesError || surplusError || impactError));
   const combinedError = meErr ?? tailgatesErr ?? surplusErr ?? impactErr;
 
   const refetchAll = () => {
-    void refetchMe();
+    if (!skipMeQuery) {
+      void refetchMe();
+    }
     void refetchTailgates();
     void refetchSurplus();
     void refetchImpact();
+  };
+
+  const onLogout = async () => {
+    setLogoutError(null);
+    try {
+      await logout().unwrap();
+      router.replace(API_MODE === 'remote' ? '/login' : '/welcome');
+    } catch (err) {
+      setLogoutError(messageFromUnknownError(err, 'Sign out failed. Please try again.'));
+    }
   };
 
   const name = displayNameFor(currentUser);
@@ -135,7 +145,7 @@ export default function HostProfileTabScreen() {
 
       {!queriesLoading && hasQueryError ? (
         <Card variant="soft" accentColor={colors.navy}>
-          <Text style={styles.errorText}>{profileErrorMessage(combinedError)}</Text>
+          <Text style={styles.errorText}>{messageFromUnknownError(combinedError, 'Could not load host profile data.')}</Text>
           <SecondaryButton label="Try again" onPress={() => void refetchAll()} style={styles.retryButton} />
         </Card>
       ) : null}
@@ -143,6 +153,9 @@ export default function HostProfileTabScreen() {
       {!queriesLoading && !hasQueryError && !currentUser ? (
         <Card variant="soft" accentColor={colors.navy}>
           <Text style={styles.errorText}>Sign in to view your host profile.</Text>
+          {API_MODE === 'remote' ? (
+            <PrimaryButton label="Sign in" onPress={() => router.push('/login')} style={styles.retryButton} />
+          ) : null}
         </Card>
       ) : null}
 
@@ -225,6 +238,13 @@ export default function HostProfileTabScreen() {
               </View>
             </View>
           </Card>
+
+          <SecondaryButton
+            label={logoutLoading ? 'Signing out…' : 'Log out'}
+            onPress={() => void onLogout()}
+            disabled={logoutLoading}
+          />
+          {logoutError !== null ? <Text style={styles.logoutError}>{logoutError}</Text> : null}
 
           <PrimaryButton label="Manage host dashboard" onPress={() => router.push('/dashboard')} />
           <SecondaryButton label="Open Student / Fan Discover" onPress={() => router.push('/discover')} />
@@ -363,5 +383,10 @@ const styles = StyleSheet.create({
   },
   flexOne: {
     flex: 1,
+  },
+  logoutError: {
+    color: colors.muted,
+    fontSize: typography.caption,
+    marginTop: spacing.xs,
   },
 });

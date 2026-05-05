@@ -3,41 +3,63 @@ import { router } from 'expo-router';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { brandImages } from '@/src/assets/images';
-import { Card, PrimaryButton, Screen } from '@/src/components';
+import { Card, PrimaryButton, Screen, SecondaryButton } from '@/src/components';
+import { API_MODE } from '@/src/services/config/env';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
 
 export default function RoleSelectScreen() {
+  const isRemote = API_MODE === 'remote';
+
   return (
     <Screen scroll contentContainerStyle={styles.content}>
       <View style={styles.logoWrap}>
         <Image source={brandImages.logo} resizeMode="contain" style={styles.logo} />
       </View>
       <View style={styles.heroCopy}>
-        <Text style={styles.heroTitle}>How are you joining?</Text>
-        <Text style={styles.heroSubtitle}>Pick a path to explore the TLAC gameday experience.</Text>
+        <Text style={styles.heroTitle}>What would you like to do first?</Text>
+        <Text style={styles.heroSubtitle}>
+          {isRemote
+            ? 'Sign in or create an account to continue. Your starting view can still be changed later.'
+            : 'Pick a starting view for this demo. You can switch between exploring and hosting anytime.'}
+        </Text>
       </View>
 
-      <Card style={styles.roleCard} accentColor={colors.navy}>
-        <Text style={styles.roleTitle}>Student / Fan</Text>
-        <Text style={styles.roleBody}>Browse tailgates, claim surplus, track impact.</Text>
-        <PrimaryButton
-          label="Continue as Student / Fan"
-          onPress={() => router.push('/discover')}
-          style={styles.roleButton}
-        />
-      </Card>
+      {isRemote ? (
+        <Card style={styles.roleCard} accentColor={colors.navy}>
+          <Text style={styles.roleTitle}>Continue with your account</Text>
+          <Text style={styles.roleBody}>
+            Use a real account so tokens, saved activity, and server data stay in sync.
+          </Text>
+          <PrimaryButton label="Sign in" onPress={() => router.push('/login')} style={styles.roleButton} />
+          <SecondaryButton label="Create account" onPress={() => router.push('/register')} />
+        </Card>
+      ) : (
+        <>
+          <Card style={styles.roleCard} accentColor={colors.navy}>
+            <Text style={styles.roleTitle}>Explore tailgates</Text>
+            <Text style={styles.roleBody}>Browse tailgates, claim surplus, and track gameday impact.</Text>
+            <PrimaryButton
+              label="Start exploring"
+              onPress={() => router.push('/discover')}
+              style={styles.roleButton}
+            />
+          </Card>
 
-      <Card style={styles.roleCard} accentColor={colors.gold}>
-        <Text style={styles.roleTitle}>Tailgate Host</Text>
-        <Text style={styles.roleBody}>Post menu, flag leftovers, support donation pathways.</Text>
-        <PrimaryButton
-          label="Continue as Host"
-          onPress={() => router.push('/dashboard')}
-          style={styles.roleButton}
-        />
-      </Card>
+          <Card style={styles.roleCard} accentColor={colors.gold}>
+            <Text style={styles.roleTitle}>Host a tailgate</Text>
+            <Text style={styles.roleBody}>
+              Create a tailgate, publish menus, manage surplus, and coordinate donation pathways.
+            </Text>
+            <PrimaryButton
+              label="Start hosting"
+              onPress={() => router.push('/dashboard')}
+              style={styles.roleButton}
+            />
+          </Card>
+        </>
+      )}
     </Screen>
   );
 }

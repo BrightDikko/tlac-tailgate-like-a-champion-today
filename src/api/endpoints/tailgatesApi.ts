@@ -1,10 +1,11 @@
-import type {
-  FetchBaseQueryError,
-  FetchBaseQueryMeta,
-  QueryReturnValue,
-} from '@reduxjs/toolkit/query';
-
 import { baseApi } from '@/src/api/baseApi';
+import { mapTailgate } from '@/src/api/mappers';
+import {
+  fromMockApiResult,
+  remoteToPaginated,
+  remoteToSingle,
+  remoteToTailgateDeleteResult,
+} from '@/src/api/response';
 import { tailgatesHandlers } from '@/src/mocks/handlers/tailgatesHandlers';
 import { API_MODE } from '@/src/services/config/env';
 
@@ -14,42 +15,10 @@ import type {
   CreateTailgateInput,
   PaginatedResponse,
   Tailgate,
+  TailgateDeleteResult,
   TailgateQueryParams,
   UpdateTailgateInput,
 } from '@/src/types';
-
-function fromApiResult<T>(
-  result: ApiResponse<T> | ApiError
-): QueryReturnValue<T, ApiError | FetchBaseQueryError, FetchBaseQueryMeta | undefined> {
-  if ('data' in result) {
-    return { data: result.data };
-  }
-  return { error: result };
-}
-
-function asRemoteTailgateList(value: unknown): QueryReturnValue<
-  PaginatedResponse<Tailgate>,
-  ApiError | FetchBaseQueryError,
-  FetchBaseQueryMeta | undefined
-> {
-  return value as QueryReturnValue<
-    PaginatedResponse<Tailgate>,
-    ApiError | FetchBaseQueryError,
-    FetchBaseQueryMeta | undefined
-  >;
-}
-
-function asRemoteTailgate(value: unknown): QueryReturnValue<
-  Tailgate,
-  ApiError | FetchBaseQueryError,
-  FetchBaseQueryMeta | undefined
-> {
-  return value as QueryReturnValue<
-    Tailgate,
-    ApiError | FetchBaseQueryError,
-    FetchBaseQueryMeta | undefined
-  >;
-}
 
 export const tailgatesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -59,13 +28,7 @@ export const tailgatesApi = baseApi.injectEndpoints({
           const data = await tailgatesHandlers.getTailgates(arg ?? undefined);
           return { data };
         }
-        return asRemoteTailgateList(
-          await baseQuery({
-            url: '/tailgates',
-            method: 'GET',
-            params: arg ?? {},
-          })
-        );
+        return remoteToPaginated(await baseQuery({ url: '/tailgates', method: 'GET', params: arg ?? {} }), mapTailgate);
       },
       providesTags: (result) => {
         const listTag = { type: 'Tailgate' as const, id: 'LIST' as const };
@@ -84,14 +47,9 @@ export const tailgatesApi = baseApi.injectEndpoints({
       queryFn: async (id, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await tailgatesHandlers.getTailgateById(id);
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<Tailgate> | ApiError);
         }
-        return asRemoteTailgate(
-          await baseQuery({
-            url: `/tailgates/${id}`,
-            method: 'GET',
-          })
-        );
+        return remoteToSingle(await baseQuery({ url: `/tailgates/${id}`, method: 'GET' }), mapTailgate);
       },
       providesTags: (_result, _error, id) => [{ type: 'Tailgate' as const, id }],
     }),
@@ -100,15 +58,9 @@ export const tailgatesApi = baseApi.injectEndpoints({
       queryFn: async (body, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const res = await tailgatesHandlers.createTailgate(body);
-          return { data: res.data };
+          return fromMockApiResult(res as ApiResponse<Tailgate> | ApiError);
         }
-        return asRemoteTailgate(
-          await baseQuery({
-            url: '/tailgates',
-            method: 'POST',
-            body,
-          })
-        );
+        return remoteToSingle(await baseQuery({ url: '/tailgates', method: 'POST', body }), mapTailgate);
       },
       invalidatesTags: [{ type: 'Tailgate', id: 'LIST' }],
     }),
@@ -120,20 +72,45 @@ export const tailgatesApi = baseApi.injectEndpoints({
       queryFn: async ({ id, input }, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await tailgatesHandlers.updateTailgate(id, input);
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<Tailgate> | ApiError);
         }
-        return asRemoteTailgate(
-          await baseQuery({
-            url: `/tailgates/${id}`,
-            method: 'PATCH',
-            body: input,
-          })
-        );
+        return remoteToSingle(await baseQuery({ url: `/tailgates/${id}`, method: 'PATCH', body: input }), mapTailgate);
       },
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Tailgate', id },
         { type: 'Tailgate', id: 'LIST' },
       ],
+    }),
+
+    deleteTailgate: builder.mutation<TailgateDeleteResult, string>({
+      queryFn: async (id, _api, _extraOptions, baseQuery) => {
+        if (API_MODE === 'mock') {
+          const res = await tailgatesHandlers.deleteTailgate(id);
+          return fromMockApiResult(res as ApiResponse<TailgateDeleteResult> | ApiError);
+        }
+        return remoteToTailgateDeleteResult(
+          await baseQuery({ url: `/tailgates/${id}`, method: 'DELETE' }),
+          id
+        );
+      },
+      invalidatesTags: (result) => {
+        const tags: { type: 'Tailgate' | 'Menu' | 'Surplus' | 'Claim'; id: string }[] = [
+          { type: 'Tailgate', id: 'LIST' },
+          { type: 'Surplus', id: 'LIST' },
+          { type: 'Claim', id: 'LIST' },
+        ];
+        if (result !== undefined) {
+          tags.push({ type: 'Tailgate', id: result.tailgateId });
+          tags.push({ type: 'Menu', id: `TAILGATE-${result.tailgateId}` });
+          for (const sid of result.removedSurplusIds) {
+            tags.push({ type: 'Surplus', id: sid });
+          }
+          for (const mid of result.removedMenuItemIds) {
+            tags.push({ type: 'Menu', id: mid });
+          }
+        }
+        return tags;
+      },
     }),
   }),
 });
@@ -143,4 +120,5 @@ export const {
   useGetTailgateByIdQuery,
   useCreateTailgateMutation,
   useUpdateTailgateMutation,
+  useDeleteTailgateMutation,
 } = tailgatesApi;

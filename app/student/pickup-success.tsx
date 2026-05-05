@@ -1,19 +1,15 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { Card, PrimaryButton, Screen, SecondaryButton, SectionHeader } from '@/src/components';
+import { useRemoteAuthGate } from '@/src/features/auth/remoteAuthGate';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
-
-function paramOne(value: string | string[] | undefined): string | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-  return Array.isArray(value) ? value[0] : value;
-}
+import { paramOne } from '@/src/utils/routeParams';
 
 export default function PickupSuccessScreen() {
+  const { shouldRedirectToLogin } = useRemoteAuthGate();
   const params = useLocalSearchParams<{
     claimId?: string;
     servingsClaimed?: string;
@@ -27,13 +23,18 @@ export default function PickupSuccessScreen() {
   const groupNameParam = paramOne(params.groupName);
 
   const parsedServings = servingsParam !== undefined ? Number.parseInt(servingsParam, 10) : NaN;
-  const servingsCount =
-    Number.isFinite(parsedServings) && parsedServings > 0 ? parsedServings : 2;
+  const hasValidServings = Number.isFinite(parsedServings) && parsedServings > 0;
 
   const displayClaimId = claimIdParam && claimIdParam.length > 0 ? claimIdParam : undefined;
   const displayGroup = groupNameParam && groupNameParam.length > 0 ? groupNameParam : 'Host listing';
 
-  const subtitleServings = `${servingsCount} serving${servingsCount === 1 ? '' : 's'}`;
+  const subtitle = hasValidServings
+    ? `You confirmed pickup for ${parsedServings} serving${parsedServings === 1 ? '' : 's'}.`
+    : 'You confirmed your pickup.';
+
+  if (shouldRedirectToLogin) {
+    return <Redirect href="/login" />;
+  }
 
   return (
     <Screen scroll contentContainerStyle={styles.content}>
@@ -41,25 +42,24 @@ export default function PickupSuccessScreen() {
         <View style={styles.successCircle}>
           <Text style={styles.successIcon}>✓</Text>
         </View>
-        <SectionHeader
-          title="Pickup Confirmed"
-          subtitle={`You confirmed pickup for ${subtitleServings}.`}
-          style={styles.header}
-        />
+        <SectionHeader title="Pickup Confirmed" subtitle={subtitle} style={styles.header} />
       </View>
 
       <Card accentColor={colors.green}>
         <Text style={styles.badgeTitle}>Waste Warrior</Text>
-        <Text style={styles.badgeSub}>Badge progress: 3/5 pickups</Text>
-        <View style={styles.progressTrack}>
-          <View style={styles.progressFill} />
-        </View>
+        <Text style={styles.badgeSub}>
+          Thanks for confirming pickup. Every surplus rescue helps the gameday network cut waste.
+        </Text>
       </Card>
 
       <Card variant="soft">
-        <Text style={styles.summaryLine}>
-          {servingsCount} serving{servingsCount === 1 ? '' : 's'} saved
-        </Text>
+        {hasValidServings ? (
+          <Text style={styles.summaryLine}>
+            {parsedServings} serving{parsedServings === 1 ? '' : 's'} saved
+          </Text>
+        ) : (
+          <Text style={styles.summaryLine}>Pickup confirmed</Text>
+        )}
         {displayClaimId ? <Text style={styles.summaryLine}>Claim ID {displayClaimId}</Text> : null}
         <Text style={styles.summaryLine}>{displayGroup}</Text>
         {foodNameParam && foodNameParam.length > 0 ? (
@@ -112,18 +112,7 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.body,
     fontWeight: '600',
-  },
-  progressTrack: {
-    marginTop: spacing.md,
-    height: 8,
-    borderRadius: 999,
-    backgroundColor: '#DFE6EF',
-    overflow: 'hidden',
-  },
-  progressFill: {
-    width: '60%',
-    height: '100%',
-    backgroundColor: colors.gold,
+    lineHeight: 22,
   },
   summaryLine: {
     marginTop: spacing.sm,

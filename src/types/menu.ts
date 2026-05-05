@@ -19,3 +19,8 @@ export type CreateMenuItemInput = Omit<FoodItem, 'id'>;
 export type UpdateMenuItemInput = Partial<Omit<FoodItem, 'id' | 'tailgateId'>> & {
   id: string;
 };
+
+export type MenuItemDeleteResult = {
+  id: string;
+  tailgateId: string;
+};

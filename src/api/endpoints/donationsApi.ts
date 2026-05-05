@@ -1,35 +1,10 @@
-import type {
-  FetchBaseQueryError,
-  FetchBaseQueryMeta,
-  QueryReturnValue,
-} from '@reduxjs/toolkit/query';
-
 import { baseApi } from '@/src/api/baseApi';
+import { mapDonationRecord } from '@/src/api/mappers';
+import { fromMockApiResult, remoteToSingle } from '@/src/api/response';
 import { donationsHandlers } from '@/src/mocks/handlers/donationsHandlers';
 import { API_MODE } from '@/src/services/config/env';
 
 import type { ApiError, ApiResponse, DonationInput, DonationRecord } from '@/src/types';
-
-function fromApiResult<T>(
-  result: ApiResponse<T> | ApiError
-): QueryReturnValue<T, ApiError | FetchBaseQueryError, FetchBaseQueryMeta | undefined> {
-  if ('data' in result) {
-    return { data: result.data };
-  }
-  return { error: result };
-}
-
-function asRemoteDonationRecord(value: unknown): QueryReturnValue<
-  DonationRecord,
-  ApiError | FetchBaseQueryError,
-  FetchBaseQueryMeta | undefined
-> {
-  return value as QueryReturnValue<
-    DonationRecord,
-    ApiError | FetchBaseQueryError,
-    FetchBaseQueryMeta | undefined
-  >;
-}
 
 export const donationsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -37,14 +12,9 @@ export const donationsApi = baseApi.injectEndpoints({
       queryFn: async (id, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await donationsHandlers.getDonationById(id);
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<DonationRecord> | ApiError);
         }
-        return asRemoteDonationRecord(
-          await baseQuery({
-            url: `/donations/${id}`,
-            method: 'GET',
-          })
-        );
+        return remoteToSingle(await baseQuery({ url: `/donations/${id}`, method: 'GET' }), mapDonationRecord);
       },
       providesTags: (_result, _error, id) => [{ type: 'Donation' as const, id }],
     }),
@@ -53,15 +23,9 @@ export const donationsApi = baseApi.injectEndpoints({
       queryFn: async (input, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
           const result = await donationsHandlers.createDonation(input);
-          return fromApiResult(result);
+          return fromMockApiResult(result as ApiResponse<DonationRecord> | ApiError);
         }
-        return asRemoteDonationRecord(
-          await baseQuery({
-            url: '/donations',
-            method: 'POST',
-            body: input,
-          })
-        );
+        return remoteToSingle(await baseQuery({ url: '/donations', method: 'POST', body: input }), mapDonationRecord);
       },
       invalidatesTags: (result, _error, arg) => {
         const tags: { type: 'Donation' | 'Surplus' | 'Impact'; id: string }[] = [

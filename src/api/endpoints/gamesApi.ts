@@ -1,26 +1,10 @@
-import type {
-  FetchBaseQueryError,
-  FetchBaseQueryMeta,
-  QueryReturnValue,
-} from '@reduxjs/toolkit/query';
-
 import { baseApi } from '@/src/api/baseApi';
+import { mapGame } from '@/src/api/mappers';
+import { remoteToSingle } from '@/src/api/response';
 import { gamesHandlers } from '@/src/mocks/handlers/gamesHandlers';
 import { API_MODE } from '@/src/services/config/env';
 
-import type { ApiError, Game } from '@/src/types';
-
-function asRemoteGame(value: unknown): QueryReturnValue<
-  Game,
-  ApiError | FetchBaseQueryError,
-  FetchBaseQueryMeta | undefined
-> {
-  return value as QueryReturnValue<
-    Game,
-    ApiError | FetchBaseQueryError,
-    FetchBaseQueryMeta | undefined
-  >;
-}
+import type { Game } from '@/src/types';
 
 export const gamesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -30,12 +14,7 @@ export const gamesApi = baseApi.injectEndpoints({
           const res = await gamesHandlers.getCurrentGame();
           return { data: res.data };
         }
-        return asRemoteGame(
-          await baseQuery({
-            url: '/games/current',
-            method: 'GET',
-          })
-        );
+        return remoteToSingle(await baseQuery({ url: '/games/current', method: 'GET' }), mapGame);
       },
       providesTags: () => [{ type: 'Game' as const, id: 'CURRENT' }],
     }),

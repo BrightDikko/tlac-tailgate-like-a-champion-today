@@ -3,6 +3,7 @@ import type {
   ApiResponse,
   CreateMenuItemInput,
   FoodItem,
+  MenuItemDeleteResult,
   MenuQueryParams,
   PaginatedResponse,
   UpdateMenuItemInput,
@@ -77,8 +78,21 @@ export async function updateMenuItem(
   return ok(merged);
 }
 
+export async function deleteMenuItem(id: string): Promise<ApiResponse<MenuItemDeleteResult> | ApiError> {
+  await mockDelay();
+  const index = mockDb.menuItems.findIndex((item) => item.id === id);
+  if (index === -1) {
+    return fail('Menu item not found', 'NOT_FOUND');
+  }
+  const existing = mockDb.menuItems[index];
+  const tailgateId = existing.tailgateId;
+  mockDb.menuItems = mockDb.menuItems.filter((item) => item.id !== id);
+  return ok({ id, tailgateId });
+}
+
 export const menuHandlers = {
   getMenuByTailgateId,
   createMenuItem,
   updateMenuItem,
+  deleteMenuItem,
 };
