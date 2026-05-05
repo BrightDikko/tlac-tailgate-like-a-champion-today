@@ -20,6 +20,9 @@ import {
 } from '@/src/api/endpoints/menuApi';
 import { useGetTailgateByIdQuery, useUpdateTailgateMutation } from '@/src/api/endpoints/tailgatesApi';
 import { Card, FilterChip, PrimaryButton, Screen, SecondaryButton, SectionHeader } from '@/src/components';
+import { selectIsAuthenticated } from '@/src/features/auth/authSelectors';
+import { useAppSelector } from '@/src/redux/hooks';
+import { API_MODE } from '@/src/services/config/env';
 import type { FoodCategory, FoodItem, TailgateStatus } from '@/src/types';
 import { colors } from '@/src/theme/colors';
 import { radii } from '@/src/theme/radii';
@@ -44,6 +47,8 @@ const STATUS_OPTIONS: TailgateStatus[] = ['planned', 'active', 'completed'];
 export default function EditTailgateScreen() {
   const params = useLocalSearchParams<{ tailgateId?: string | string[] }>();
   const tailgateId = paramOne(params.tailgateId);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const remoteActionsLocked = API_MODE === 'remote' && !isAuthenticated;
 
   const {
     data: tailgate,
@@ -106,6 +111,7 @@ export default function EditTailgateScreen() {
 
   const menuItems = menuResponse?.data ?? [];
   const menuBusy = isCreatingMenu || isUpdatingMenu || isDeletingMenu;
+  const mutationsLocked = remoteActionsLocked;
   const menuMutationErrCombined = createMenuErr ?? updateMenuErr ?? deleteMenuErr;
   const menuMutationBanner =
     menuMutationErrCombined !== undefined
@@ -126,6 +132,7 @@ export default function EditTailgateScreen() {
   };
 
   const handleSaveTailgate = async () => {
+    if (remoteActionsLocked) return;
     if (tailgateId === undefined) return;
     resetSaveError();
     setValidationError(null);
@@ -156,6 +163,7 @@ export default function EditTailgateScreen() {
   };
 
   const handleMenuSubmit = async () => {
+    if (remoteActionsLocked) return;
     if (tailgateId === undefined) return;
     setMenuFieldError(null);
     resetCreateMenuErr();
@@ -217,6 +225,7 @@ export default function EditTailgateScreen() {
   };
 
   const handleRequestDeleteMenuItem = (item: FoodItem) => {
+    if (remoteActionsLocked) return;
     if (tailgateId === undefined) return;
     Alert.alert(
       'Delete menu item',
@@ -326,6 +335,12 @@ export default function EditTailgateScreen() {
       </View>
       <SectionHeader title="Edit tailgate" subtitle="Update listing details and menu for your group." />
 
+      {mutationsLocked ? (
+        <Card variant="soft" accentColor={colors.navy}>
+          <Text style={styles.errorText}>Sign in to save changes to this tailgate.</Text>
+        </Card>
+      ) : null}
+
       {validationError ? (
         <Card variant="soft">
           <Text style={styles.errorText}>{validationError}</Text>
@@ -424,7 +439,11 @@ export default function EditTailgateScreen() {
         </ImageBackground>
       </Card>
 
-      <PrimaryButton label="Save changes" onPress={() => void handleSaveTailgate()} disabled={isSaving} />
+      <PrimaryButton
+        label="Save changes"
+        onPress={() => void handleSaveTailgate()}
+        disabled={isSaving || mutationsLocked}
+      />
 
       <SectionHeader title="Menu" subtitle="Add or update dishes for this tailgate." />
 
@@ -468,12 +487,17 @@ export default function EditTailgateScreen() {
                 </View>
               </View>
               <View style={styles.menuItemActions}>
-                <SecondaryButton label="Edit" size="md" onPress={() => handleEditMenuItem(item)} />
+                <SecondaryButton
+                  label="Edit"
+                  size="md"
+                  onPress={() => handleEditMenuItem(item)}
+                  disabled={mutationsLocked}
+                />
                 <SecondaryButton
                   label="Delete"
                   size="md"
                   onPress={() => handleRequestDeleteMenuItem(item)}
-                  disabled={menuBusy}
+                  disabled={menuBusy || mutationsLocked}
                   textStyle={styles.destructiveButtonLabel}
                 />
               </View>
@@ -558,7 +582,7 @@ export default function EditTailgateScreen() {
             <PrimaryButton
               label={menuPrimaryLabel}
               onPress={() => void handleMenuSubmit()}
-              disabled={menuBusy}
+              disabled={menuBusy || mutationsLocked}
             />
             {editingMenuItemId !== null ? (
               <SecondaryButton label="Cancel menu edit" onPress={handleCancelMenuEdit} />

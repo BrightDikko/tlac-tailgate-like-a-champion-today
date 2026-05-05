@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type DimensionValue } from 'react-native';
 
-import { useGetMyImpactQuery } from '@/src/api/endpoints/impactApi';
+import { useGetGlobalImpactQuery, useGetMyImpactQuery } from '@/src/api/endpoints/impactApi';
 import {
   AppHeader,
   Card,
@@ -11,19 +11,49 @@ import {
   SecondaryButton,
   SectionHeader,
 } from '@/src/components';
+import { selectIsAuthenticated } from '@/src/features/auth/authSelectors';
+import { useAppSelector } from '@/src/redux/hooks';
+import { API_MODE } from '@/src/services/config/env';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
 import { messageFromUnknownError } from '@/src/utils/errorMessage';
 
 export default function ImpactTabScreen() {
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const skipMyImpact = API_MODE === 'remote' && !isAuthenticated;
+  const skipGlobalImpact = API_MODE !== 'remote' || isAuthenticated;
+
   const {
-    data: impact,
-    isLoading,
-    isError,
-    error,
-    refetch,
-  } = useGetMyImpactQuery();
+    data: myImpact,
+    isLoading: myLoading,
+    isError: myError,
+    error: myErr,
+    refetch: refetchMy,
+  } = useGetMyImpactQuery(undefined, { skip: skipMyImpact });
+
+  const {
+    data: globalImpact,
+    isLoading: globalLoading,
+    isError: globalError,
+    error: globalErr,
+    refetch: refetchGlobal,
+  } = useGetGlobalImpactQuery(undefined, { skip: skipGlobalImpact });
+
+  const impact = skipMyImpact ? globalImpact : myImpact;
+  const isLoading = skipMyImpact ? globalLoading : myLoading;
+  const isError = skipMyImpact ? globalError : myError;
+  const error = skipMyImpact ? globalErr : myErr;
+
+  const refetch = () => {
+    if (skipMyImpact) {
+      void refetchGlobal();
+    } else {
+      void refetchMy();
+    }
+  };
+
+  const isAnonymousRemote = skipMyImpact;
 
   const wasteProgressWidth =
     impact !== undefined
@@ -92,8 +122,14 @@ export default function ImpactTabScreen() {
         <Text style={styles.todayTitle}>Today on TLAC</Text>
         {isLoading ? (
           <>
-            <Text style={styles.todayLine}>Loading your impact snapshot…</Text>
-            <Text style={styles.todayLine}>Totals update as you claim and confirm surplus pickups.</Text>
+            <Text style={styles.todayLine}>
+              {isAnonymousRemote ? 'Loading community impact totals…' : 'Loading your impact snapshot…'}
+            </Text>
+            <Text style={styles.todayLine}>
+              {isAnonymousRemote
+                ? 'Community totals update as surplus is claimed and pickups are confirmed.'
+                : 'Totals update as you claim and confirm surplus pickups.'}
+            </Text>
             <Text style={styles.todayLine}>TLAC turns gameday abundance into shared impact.</Text>
           </>
         ) : isError ? (
@@ -104,16 +140,33 @@ export default function ImpactTabScreen() {
           </>
         ) : impact !== undefined ? (
           <>
-            <Text style={styles.todayLine}>
-              From your loaded totals: {impact.servingsClaimed} serving
-              {impact.servingsClaimed === 1 ? '' : 's'} claimed, {impact.poundsDonated} lb donated.
-            </Text>
-            <Text style={styles.todayLine}>
-              {impact.participatingTailgates} participating tailgate
-              {impact.participatingTailgates === 1 ? '' : 's'}, {impact.studentPickups} student pickup
-              {impact.studentPickups === 1 ? '' : 's'}, {impact.donationCentersSupported} donation partner
-              {impact.donationCentersSupported === 1 ? '' : 's'} supported.
-            </Text>
+            {isAnonymousRemote ? (
+              <>
+                <Text style={styles.todayLine}>
+                  Community-wide: {impact.servingsClaimed} serving
+                  {impact.servingsClaimed === 1 ? '' : 's'} claimed, {impact.poundsDonated} lb donated.
+                </Text>
+                <Text style={styles.todayLine}>
+                  {impact.participatingTailgates} participating tailgate
+                  {impact.participatingTailgates === 1 ? '' : 's'}, {impact.studentPickups} student pickup
+                  {impact.studentPickups === 1 ? '' : 's'}, {impact.donationCentersSupported} donation partner
+                  {impact.donationCentersSupported === 1 ? '' : 's'} supported.
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.todayLine}>
+                  From your loaded totals: {impact.servingsClaimed} serving
+                  {impact.servingsClaimed === 1 ? '' : 's'} claimed, {impact.poundsDonated} lb donated.
+                </Text>
+                <Text style={styles.todayLine}>
+                  {impact.participatingTailgates} participating tailgate
+                  {impact.participatingTailgates === 1 ? '' : 's'}, {impact.studentPickups} student pickup
+                  {impact.studentPickups === 1 ? '' : 's'}, {impact.donationCentersSupported} donation partner
+                  {impact.donationCentersSupported === 1 ? '' : 's'} supported.
+                </Text>
+              </>
+            )}
             <Text style={styles.todayLine}>TLAC turns gameday abundance into shared impact.</Text>
           </>
         ) : (

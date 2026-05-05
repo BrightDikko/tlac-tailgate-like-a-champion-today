@@ -6,6 +6,9 @@ import { useGetMeQuery } from '@/src/api/endpoints/authApi';
 import { useGetCurrentGameQuery } from '@/src/api/endpoints/gamesApi';
 import { useGetSurplusQuery } from '@/src/api/endpoints/surplusApi';
 import { useGetTailgatesQuery } from '@/src/api/endpoints/tailgatesApi';
+import { selectIsAuthenticated } from '@/src/features/auth/authSelectors';
+import { useAppSelector } from '@/src/redux/hooks';
+import { API_MODE } from '@/src/services/config/env';
 import {
   Card,
   HostBrandedHeader,
@@ -21,6 +24,7 @@ import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
 import { messageFromUnknownError } from '@/src/utils/errorMessage';
+import { formatClockTime, formatDurationMinutes } from '@/src/utils/timeDisplay';
 
 function phaseLabel(phase: GamePhase) {
   return phase === 'postgame' ? 'Post-game' : 'Pregame';
@@ -34,13 +38,16 @@ function tailgateLocation(tailgate: Tailgate): string {
 }
 
 export default function HostReachTabScreen() {
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const skipProtected = API_MODE === 'remote' && !isAuthenticated;
+
   const {
     data: currentUser,
     isLoading: meLoading,
     isError: meError,
     error: meErr,
     refetch: refetchMe,
-  } = useGetMeQuery();
+  } = useGetMeQuery(undefined, { skip: skipProtected });
 
   const {
     data: currentGame,
@@ -80,22 +87,26 @@ export default function HostReachTabScreen() {
   const servingsVisible = liveHostSurplus.reduce((sum, s) => sum + s.servingsRemaining, 0);
   const totalBuzz = hostTailgates.reduce((sum, t) => sum + (t.trendingScore ?? 0), 0);
 
-  const combinedError = meErr ?? gameErr ?? tailgatesErr ?? surplusErr;
+  const combinedError = (skipProtected ? undefined : meErr) ?? gameErr ?? tailgatesErr ?? surplusErr;
   const hasQueryError =
-    meError || (Boolean(userId) && (gameError || tailgatesError || surplusError));
+    (!skipProtected && meError) || (Boolean(userId) && (gameError || tailgatesError || surplusError));
   const queriesLoading =
-    meLoading || (Boolean(userId) && (gameLoading || tailgatesLoading || surplusLoading));
+    (!skipProtected && meLoading) || (Boolean(userId) && (gameLoading || tailgatesLoading || surplusLoading));
 
   const refetchAll = () => {
-    void refetchMe();
+    if (!skipProtected) {
+      void refetchMe();
+    }
     void refetchGame();
-    void refetchTailgates();
+    if (userId) {
+      void refetchTailgates();
+    }
     void refetchSurplus();
   };
 
   const headerSubtitle = currentGame
     ? `Host · ${phaseLabel(currentGame.phase)} · ${currentGame.matchup}`
-    : meLoading || gameLoading
+    : (!skipProtected && meLoading) || gameLoading
       ? 'Host · Loading gameday…'
       : 'Host · Gameday';
 
@@ -131,6 +142,11 @@ export default function HostReachTabScreen() {
           <Text style={styles.cardBody}>
             Sign in with your host account to see how your tailgates and surplus appear to students and fans.
           </Text>
+          <PrimaryButton
+            label="Sign in"
+            onPress={() => router.push({ pathname: '/login', params: { redirectTo: '/dashboard' } })}
+            style={styles.retryButton}
+          />
         </Card>
       ) : null}
 
@@ -148,7 +164,7 @@ export default function HostReachTabScreen() {
             <Text style={styles.cardTitle}>Student / Fan preview</Text>
             <Text style={styles.cardBody}>
               Active tailgates appear in Discover with your hero, menu highlights, and location. Live surplus
-              listings appear in the Surplus tab so neighbors can claim servings before pickup ends.
+              listings appear in the Surplus tab so neighbors can claim servings before availability ends.
             </Text>
             {activeCount === 0 ? (
               <Text style={styles.warningText}>
@@ -219,7 +235,10 @@ export default function HostReachTabScreen() {
                   </View>
                   <Text style={styles.surplusGroup}>{item.groupName}</Text>
                   <Text style={styles.surplusMeta}>
-                    {item.servingsRemaining} servings · {item.minutesLeft} min left
+                    {item.servingsRemaining} servings · Available until {formatClockTime(item.expiresAt)}
+                  </Text>
+                  <Text style={styles.surplusMeta}>
+                    Pickup window {formatDurationMinutes(item.pickupWindowMinutes ?? 30)}
                   </Text>
                   {item.pickupNote?.trim() ? (
                     <Text style={styles.pickupNote}>{item.pickupNote.trim()}</Text>

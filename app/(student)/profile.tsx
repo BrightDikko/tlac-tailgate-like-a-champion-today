@@ -1,13 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useGetMeQuery, useLogoutMutation } from '@/src/api/endpoints/authApi';
 import { useGetCurrentGameQuery } from '@/src/api/endpoints/gamesApi';
 import { useGetMyImpactQuery } from '@/src/api/endpoints/impactApi';
-import { avatarImages } from '@/src/assets/images';
-import { AppHeader, Card, PrimaryButton, Screen, SecondaryButton } from '@/src/components';
+import { AppHeader, Card, PrimaryButton, Screen, SecondaryButton, UserAvatar } from '@/src/components';
 import { selectIsAuthenticated } from '@/src/features/auth/authSelectors';
 import { useAppSelector } from '@/src/redux/hooks';
 import { API_MODE } from '@/src/services/config/env';
@@ -21,15 +20,6 @@ function displayNameFor(user: CurrentUser): string {
   const d = user.displayName?.trim();
   if (d) return d;
   return [user.firstName, user.lastName].filter(Boolean).join(' ').trim() || 'TLAC member';
-}
-
-function initialsFor(user: CurrentUser): string {
-  const i = user.avatarInitials?.trim();
-  if (i) return i.toUpperCase().slice(0, 3);
-  const a = (user.firstName?.charAt(0) ?? '').toUpperCase();
-  const b = (user.lastName?.charAt(0) ?? '').toUpperCase();
-  const pair = `${a}${b}`;
-  return pair || 'TL';
 }
 
 function affiliationFor(user: CurrentUser, gameMatchup?: string): string {
@@ -54,6 +44,7 @@ function savedTailgateCount(user: CurrentUser): number {
 export default function ProfileTabScreen() {
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const skipMeQuery = API_MODE === 'remote' && !isAuthenticated;
+  const skipImpactQuery = API_MODE === 'remote' && !isAuthenticated;
 
   const {
     data: me,
@@ -72,16 +63,18 @@ export default function ProfileTabScreen() {
     isError: impactError,
     error: impactErr,
     refetch: refetchImpact,
-  } = useGetMyImpactQuery();
+  } = useGetMyImpactQuery(undefined, { skip: skipImpactQuery });
 
-  const queryError = meErr ?? impactErr;
-  const queryErrorFlag = meError || impactError;
+  const queryError = meErr ?? (skipImpactQuery ? undefined : impactErr);
+  const queryErrorFlag = meError || (!skipImpactQuery && impactError);
 
   const refetchProfileData = () => {
     if (!skipMeQuery) {
       void refetchMe();
     }
-    void refetchImpact();
+    if (!skipImpactQuery) {
+      void refetchImpact();
+    }
   };
 
   const onLogout = async () => {
@@ -95,18 +88,16 @@ export default function ProfileTabScreen() {
   };
 
   const name = me !== undefined ? displayNameFor(me) : '';
-  const initials = me !== undefined ? initialsFor(me) : 'TL';
   const affiliation = me !== undefined ? affiliationFor(me, currentGame?.matchup) : '';
   const streak = me !== undefined ? pickupStreakFor(me) : 0;
   const savedCount = me !== undefined ? savedTailgateCount(me) : 0;
-  const avatarImage =
-    me?.avatarImageKey !== undefined
-      ? (avatarImages as Record<string, ImageSourcePropType>)[me.avatarImageKey]
-      : undefined;
 
   const servingsDisplay =
-    impactLoading || impact === undefined ? null : impact.servingsClaimed;
-  const wasteDisplay = impactLoading || impact === undefined ? null : impact.wasteDivertedPercent;
+    skipImpactQuery || impactLoading || impact === undefined ? null : impact.servingsClaimed;
+  const wasteDisplay =
+    skipImpactQuery || impactLoading || impact === undefined ? null : impact.wasteDivertedPercent;
+
+  const showLogout = API_MODE !== 'remote' || isAuthenticated;
 
   return (
     <Screen scroll safeAreaEdges={['top', 'left', 'right']} contentContainerStyle={styles.content}>
@@ -123,7 +114,11 @@ export default function ProfileTabScreen() {
       {API_MODE === 'remote' && !isAuthenticated ? (
         <Card variant="soft" accentColor={colors.navy}>
           <Text style={styles.errorText}>Sign in to view your profile and saved activity.</Text>
-          <PrimaryButton label="Sign in" onPress={() => router.push('/login')} style={styles.retryButton} />
+          <PrimaryButton
+            label="Sign in"
+            onPress={() => router.push({ pathname: '/login', params: { redirectTo: '/profile' } })}
+            style={styles.retryButton}
+          />
         </Card>
       ) : null}
 
@@ -144,13 +139,7 @@ export default function ProfileTabScreen() {
         </Card>
       ) : me !== undefined ? (
         <Card style={styles.heroCard} accentColor={colors.navy}>
-          {avatarImage ? (
-            <Image source={avatarImage} resizeMode="cover" style={styles.avatarImage} />
-          ) : (
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{initials}</Text>
-            </View>
-          )}
+          <UserAvatar user={me} size={104} borderColor={colors.gold} fallbackInitials="TL" />
           <Text style={styles.name}>{name}</Text>
           <Text style={styles.roleLine}>{affiliation}</Text>
           <View style={styles.statRow}>
@@ -205,16 +194,24 @@ export default function ProfileTabScreen() {
       {!skipMeQuery && API_MODE === 'remote' && !meLoading && me === undefined && !queryErrorFlag ? (
         <Card variant="soft" accentColor={colors.navy}>
           <Text style={styles.errorText}>We could not load your account. Try signing in again.</Text>
-          <PrimaryButton label="Sign in" onPress={() => router.push('/login')} style={styles.retryButton} />
+          <PrimaryButton
+            label="Sign in"
+            onPress={() => router.push({ pathname: '/login', params: { redirectTo: '/profile' } })}
+            style={styles.retryButton}
+          />
         </Card>
       ) : null}
 
-      <SecondaryButton
-        label={logoutLoading ? 'Signing out…' : 'Log out'}
-        onPress={() => void onLogout()}
-        disabled={logoutLoading}
-      />
-      {logoutError !== null ? <Text style={styles.logoutError}>{logoutError}</Text> : null}
+      {showLogout ? (
+        <>
+          <SecondaryButton
+            label={logoutLoading ? 'Signing out…' : 'Log out'}
+            onPress={() => void onLogout()}
+            disabled={logoutLoading}
+          />
+          {logoutError !== null ? <Text style={styles.logoutError}>{logoutError}</Text> : null}
+        </>
+      ) : null}
 
       <PrimaryButton label="Browse tailgates" onPress={() => router.push('/discover')} />
       <SecondaryButton label="Open host dashboard" onPress={() => router.push('/dashboard')} />
@@ -244,29 +241,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 120,
     width: '100%',
-  },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: colors.white,
-  },
-  avatarImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 3,
-    borderColor: colors.white,
-    backgroundColor: colors.cream,
-  },
-  avatarText: {
-    color: colors.textInverse,
-    fontSize: typography.subheading,
-    fontWeight: '900',
   },
   name: {
     color: colors.text,

@@ -12,6 +12,9 @@ import {
 
 import { placeholderImages, tailgateImages } from '@/src/assets/images';
 import { useGetCurrentGameQuery } from '@/src/api/endpoints/gamesApi';
+import { selectIsAuthenticated } from '@/src/features/auth/authSelectors';
+import { useAppSelector } from '@/src/redux/hooks';
+import { API_MODE } from '@/src/services/config/env';
 import { useGetMenuByTailgateIdQuery } from '@/src/api/endpoints/menuApi';
 import { useCloseSurplusMutation, useGetSurplusQuery } from '@/src/api/endpoints/surplusApi';
 import { useDeleteTailgateMutation, useGetTailgateByIdQuery } from '@/src/api/endpoints/tailgatesApi';
@@ -31,6 +34,7 @@ import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
 import { isNotFoundError, messageFromUnknownError } from '@/src/utils/errorMessage';
 import { paramOne } from '@/src/utils/routeParams';
+import { formatClockTime, formatDurationMinutes } from '@/src/utils/timeDisplay';
 
 const IMAGE_TONE_GRADIENT: Record<TailgateImageTone, { bottom: string }> = {
   stadium: { bottom: '#0B2A4A' },
@@ -68,6 +72,8 @@ function ManageScreenHeader() {
 export default function TailgateManageScreen() {
   const params = useLocalSearchParams<{ tailgateId?: string | string[] }>();
   const tailgateId = paramOne(params.tailgateId);
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const remoteActionsLocked = API_MODE === 'remote' && !isAuthenticated;
 
   const [deleteTailgate, { isLoading: isDeletingTailgate, error: deleteTailgateErr, reset: resetDeleteTailgateErr }] =
     useDeleteTailgateMutation();
@@ -117,6 +123,7 @@ export default function TailgateManageScreen() {
   };
 
   const confirmDeleteTailgate = (tgId: string, status: 'planned' | 'completed') => {
+    if (remoteActionsLocked) return;
     const isPlanned = status === 'planned';
     Alert.alert(
       isPlanned ? 'Delete planned tailgate' : 'Archive completed tailgate',
@@ -145,6 +152,7 @@ export default function TailgateManageScreen() {
   };
 
   const confirmCloseSurplus = (s: SurplusItem) => {
+    if (remoteActionsLocked) return;
     if (s.status !== 'available' && s.status !== 'almost_gone') return;
     Alert.alert(
       'Close surplus listing',
@@ -256,6 +264,12 @@ export default function TailgateManageScreen() {
     <Screen scroll contentContainerStyle={styles.content}>
       <ManageScreenHeader />
 
+      {remoteActionsLocked ? (
+        <Card variant="soft" accentColor={colors.navy}>
+          <Text style={styles.muted}>Sign in to manage surplus and tailgate actions.</Text>
+        </Card>
+      ) : null}
+
       <Card noPadding style={styles.heroCard}>
         <ImageBackground source={heroSource(tailgate)} style={styles.manageHero} resizeMode="cover">
           <View style={[styles.manageHeroTint, { backgroundColor: heroOverlayBottom(tailgate) }]} />
@@ -310,6 +324,7 @@ export default function TailgateManageScreen() {
           onPress={() =>
             router.push({ pathname: '/edit-tailgate', params: { tailgateId: tailgate.id } })
           }
+          disabled={remoteActionsLocked}
         />
         <SecondaryButton label="Publish surplus" onPress={() => router.push('/publish')} />
         <SecondaryButton label="Log donation" onPress={() => router.push('/host/log-donation')} />
@@ -334,6 +349,7 @@ export default function TailgateManageScreen() {
             onPress={() =>
               router.push({ pathname: '/edit-tailgate', params: { tailgateId: tailgate.id } })
             }
+            disabled={remoteActionsLocked}
           />
         </>
       ) : (
@@ -344,6 +360,7 @@ export default function TailgateManageScreen() {
             onPress={() =>
               router.push({ pathname: '/edit-tailgate', params: { tailgateId: tailgate.id } })
             }
+            disabled={remoteActionsLocked}
             style={styles.stackGap}
           />
         </Card>
@@ -359,14 +376,17 @@ export default function TailgateManageScreen() {
                 <StatusChip status={s.status} />
               </View>
               <Text style={styles.surplusMeta}>
-                {s.servingsRemaining} servings · {s.minutesLeft} min left
+                {s.servingsRemaining} servings · Available until {formatClockTime(s.expiresAt)}
+              </Text>
+              <Text style={styles.surplusMeta}>
+                Pickup window {formatDurationMinutes(s.pickupWindowMinutes ?? 30)}
               </Text>
               {s.status === 'available' || s.status === 'almost_gone' ? (
                 <SecondaryButton
                   label="Close listing"
                   size="md"
                   onPress={() => confirmCloseSurplus(s)}
-                  disabled={isClosingSurplus}
+                  disabled={isClosingSurplus || remoteActionsLocked}
                   style={styles.surplusCloseBtn}
                   textStyle={styles.destructiveLabel}
                 />
@@ -424,7 +444,7 @@ export default function TailgateManageScreen() {
                 confirmDeleteTailgate(tailgate.id, st);
               }
             }}
-            disabled={isDeletingTailgate}
+            disabled={isDeletingTailgate || remoteActionsLocked}
             textStyle={styles.destructiveLabel}
             style={styles.stackGap}
           />

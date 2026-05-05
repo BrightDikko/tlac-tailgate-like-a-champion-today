@@ -29,17 +29,15 @@ function isUnauthorized(error: FetchBaseQueryError | undefined): boolean {
   return 'status' in error && error.status === 401;
 }
 
-function parseRefreshResponse(data: unknown): { accessToken: string; refreshToken?: string } | null {
-  if (data === null || typeof data !== 'object') return null;
-  const d = data as Record<string, unknown>;
-  if (typeof d.accessToken === 'string' && d.accessToken.length > 0) {
+function extractTokensFromRecord(obj: Record<string, unknown>): { accessToken: string; refreshToken?: string } | null {
+  if (typeof obj.accessToken === 'string' && obj.accessToken.length > 0) {
     return {
-      accessToken: d.accessToken,
-      refreshToken: typeof d.refreshToken === 'string' && d.refreshToken.length > 0 ? d.refreshToken : undefined,
+      accessToken: obj.accessToken,
+      refreshToken: typeof obj.refreshToken === 'string' && obj.refreshToken.length > 0 ? obj.refreshToken : undefined,
     };
   }
-  const tokens = d.tokens;
-  if (tokens !== null && typeof tokens === 'object') {
+  const tokens = obj.tokens;
+  if (tokens !== null && typeof tokens === 'object' && !Array.isArray(tokens)) {
     const t = tokens as Record<string, unknown>;
     if (typeof t.accessToken === 'string' && t.accessToken.length > 0) {
       return {
@@ -48,6 +46,22 @@ function parseRefreshResponse(data: unknown): { accessToken: string; refreshToke
       };
     }
   }
+  return null;
+}
+
+function parseRefreshResponse(data: unknown): { accessToken: string; refreshToken?: string } | null {
+  if (data === null || typeof data !== 'object') return null;
+  const d = data as Record<string, unknown>;
+
+  const direct = extractTokensFromRecord(d);
+  if (direct !== null) return direct;
+
+  const wrapped = d.data;
+  if (wrapped !== null && typeof wrapped === 'object' && !Array.isArray(wrapped)) {
+    const inner = extractTokensFromRecord(wrapped as Record<string, unknown>);
+    if (inner !== null) return inner;
+  }
+
   return null;
 }
 

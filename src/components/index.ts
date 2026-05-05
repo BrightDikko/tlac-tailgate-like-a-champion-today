@@ -12,3 +12,5 @@ export { SectionHeader } from './SectionHeader';
 export { StatusChip } from './StatusChip';
 export { SurplusCard } from './SurplusCard';
 export { TailgateCard } from './TailgateCard';
+export { UserAvatar } from './UserAvatar';
+export { WebPhoneFrame } from './WebPhoneFrame';

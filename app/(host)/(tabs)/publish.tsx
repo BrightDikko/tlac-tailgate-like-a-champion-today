@@ -16,6 +16,9 @@ import {
 
 import { useGetMeQuery } from '@/src/api/endpoints/authApi';
 import { useGetCurrentGameQuery } from '@/src/api/endpoints/gamesApi';
+import { selectIsAuthenticated } from '@/src/features/auth/authSelectors';
+import { useAppSelector } from '@/src/redux/hooks';
+import { API_MODE } from '@/src/services/config/env';
 import { useGetMenuByTailgateIdQuery } from '@/src/api/endpoints/menuApi';
 import { useGetTailgatesQuery } from '@/src/api/endpoints/tailgatesApi';
 import { useCreateSurplusMutation } from '@/src/api/endpoints/surplusApi';
@@ -37,6 +40,7 @@ type PublishDraftItem = {
 };
 
 const pickupWindows = ['15 min', '30 min', '45 min', '60 min'] as const;
+const availabilityWindows = ['1 hr', '2 hr', '4 hr', 'Until 8 PM'] as const;
 
 function phaseLabel(phase: GamePhase) {
   return phase === 'postgame' ? 'Post-game' : 'Pregame';
@@ -49,6 +53,20 @@ function defaultServingsFor(quantityPrepared: number): string {
 function minutesFromWindow(value: string): number {
   const match = value.match(/\d+/);
   return match ? Number.parseInt(match[0], 10) : 30;
+}
+
+function availabilityDeadlineFromWindow(value: string): Date {
+  if (value === 'Until 8 PM') {
+    const now = new Date();
+    const endOfDay = new Date(now);
+    endOfDay.setHours(20, 0, 0, 0);
+    if (endOfDay.getTime() > now.getTime()) {
+      return endOfDay;
+    }
+  }
+  const match = value.match(/\d+/);
+  const hours = match ? Number.parseInt(match[0], 10) : 4;
+  return new Date(Date.now() + hours * 60 * 60_000);
 }
 
 function mergeDraftsFromMenu(menu: FoodItem[], prev: PublishDraftItem[]): PublishDraftItem[] {
@@ -76,6 +94,8 @@ function validatePublishDrafts(
   drafts: PublishDraftItem[],
   pickupNote: string,
   tailgate: Tailgate | undefined,
+  availabilityWindow: string,
+  pickupWindow: string,
 ): string | null {
   if (tailgate === undefined) {
     return 'Choose a tailgate to publish under.';
@@ -92,6 +112,19 @@ function validatePublishDrafts(
   }
   if (pickupNote.trim() === '') {
     return 'Add a pickup note so neighbors know how to find you.';
+  }
+  if (tailgate.groupName.trim().length === 0) {
+    return 'This tailgate is missing a group name. Update it before publishing.';
+  }
+  if (tailgate.locationDetail.trim().length === 0) {
+    return 'This tailgate is missing a location. Update it before publishing.';
+  }
+  const availabilityDeadline = availabilityDeadlineFromWindow(availabilityWindow);
+  if (!Number.isFinite(availabilityDeadline.getTime()) || availabilityDeadline.getTime() <= Date.now()) {
+    return 'Choose an availability deadline in the future.';
+  }
+  if (minutesFromWindow(pickupWindow) <= 0) {
+    return 'Choose a valid pickup hold window.';
   }
   return null;
 }
@@ -111,13 +144,16 @@ function tailgateHeroSource(tailgate: Tailgate): ImageSourcePropType {
 }
 
 export default function HostPublishTabScreen() {
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const skipProtected = API_MODE === 'remote' && !isAuthenticated;
+
   const {
     data: currentUser,
     isLoading: meLoading,
     isError: meError,
     error: meErr,
     refetch: refetchMe,
-  } = useGetMeQuery();
+  } = useGetMeQuery(undefined, { skip: skipProtected });
 
   const {
     data: currentGame,
@@ -175,7 +211,8 @@ export default function HostPublishTabScreen() {
   const menuItems = useMemo(() => menuResponse?.data ?? [], [menuResponse?.data]);
 
   const [drafts, setDrafts] = useState<PublishDraftItem[]>([]);
-  const [pickupWindow, setPickupWindow] = useState<string>('30 min');
+  const [pickupWindowMinutes, setPickupWindowMinutes] = useState<string>('30 min');
+  const [availabilityWindow, setAvailabilityWindow] = useState<string>('4 hr');
   const [pickupNote, setPickupNote] = useState('');
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
 
@@ -215,24 +252,30 @@ export default function HostPublishTabScreen() {
   const [createSurplus, { isLoading: isPublishing, error: publishError, reset: resetPublishError }] =
     useCreateSurplusMutation();
 
-  const fatalQueryError = meError || gameError || (Boolean(userId) && tailgatesError);
-  const fatalQueryErr = meErr ?? gameErr ?? tailgatesErr;
+  const fatalQueryError = (!skipProtected && meError) || gameError || (Boolean(userId) && tailgatesError);
+  const fatalQueryErr = (skipProtected ? undefined : meErr) ?? gameErr ?? tailgatesErr;
 
   const queriesLoading =
-    meLoading ||
+    (!skipProtected && meLoading) ||
     (Boolean(userId) && (gameLoading || tailgatesLoading)) ||
     (Boolean(userId) && selectedHostTailgate !== undefined && menuLoading);
 
   const refetchAll = () => {
-    void refetchMe();
+    if (!skipProtected) {
+      void refetchMe();
+    }
     void refetchGame();
-    void refetchTailgates();
-    void refetchMenu();
+    if (userId) {
+      void refetchTailgates();
+    }
+    if (userId && selectedHostTailgate !== undefined) {
+      void refetchMenu();
+    }
   };
 
   const headerSubtitle = currentGame
     ? `Host · ${phaseLabel(currentGame.phase)} · ${currentGame.matchup}`
-    : gameLoading || meLoading
+    : gameLoading || (!skipProtected && meLoading)
       ? 'Host · Loading gameday…'
       : 'Host · Gameday';
 
@@ -243,18 +286,45 @@ export default function HostPublishTabScreen() {
   }, 0);
 
   const handlePublish = async () => {
+    if (skipProtected || currentUser === undefined) return;
     if (selectedHostTailgate === undefined) return;
     resetPublishError();
-    const err = validatePublishDrafts(drafts, pickupNote, selectedHostTailgate);
+    const err = validatePublishDrafts(
+      drafts,
+      pickupNote,
+      selectedHostTailgate,
+      availabilityWindow,
+      pickupWindowMinutes,
+    );
     if (err !== null) {
       setValidationMessage(err);
       return;
     }
     setValidationMessage(null);
+    const groupName = selectedHostTailgate.groupName.trim();
+    const location = selectedHostTailgate.locationDetail.trim();
+    if (groupName.length === 0 || location.length === 0) {
+      setValidationMessage('This tailgate is missing group name or location. Update the listing before publishing.');
+      return;
+    }
     try {
-      const minutesLeft = minutesFromWindow(pickupWindow);
+      const listingExpiresAtDate = availabilityDeadlineFromWindow(availabilityWindow);
+      if (!Number.isFinite(listingExpiresAtDate.getTime()) || listingExpiresAtDate.getTime() <= Date.now()) {
+        setValidationMessage('Choose an availability deadline in the future.');
+        return;
+      }
+      const pickupHoldMinutes = minutesFromWindow(pickupWindowMinutes);
+      if (pickupHoldMinutes <= 0) {
+        setValidationMessage('Choose a valid pickup hold window.');
+        return;
+      }
+      const availabilityMinutesLeft = Math.max(
+        1,
+        Math.ceil((listingExpiresAtDate.getTime() - Date.now()) / 60_000),
+      );
       const createdAt = new Date().toISOString();
-      const expiresAt = new Date(Date.now() + minutesLeft * 60_000).toISOString();
+      // Surplus expiresAt is listing availability deadline; pickup hold is sent separately.
+      const expiresAt = listingExpiresAtDate.toISOString();
       const trimmedNote = pickupNote.trim();
       const itemsPublished = selectedDrafts.length;
       const totalServings = selectedDrafts.reduce((sum, draft) => {
@@ -267,14 +337,15 @@ export default function HostPublishTabScreen() {
             tailgateId: selectedHostTailgate.id,
             foodItemId: draft.foodItemId,
             foodName: draft.foodName,
-            groupName: selectedHostTailgate.groupName,
-            location: selectedHostTailgate.locationDetail,
+            groupName,
+            location,
             servingsRemaining: Number.parseInt(draft.servingsRemaining, 10),
-            minutesLeft,
+            minutesLeft: availabilityMinutesLeft,
             status: 'available',
             pickupNote: trimmedNote,
             createdAt,
             expiresAt,
+            pickupWindowMinutes: pickupHoldMinutes,
             ...(draft.imageKey !== undefined ? { imageKey: draft.imageKey } : {}),
           }).unwrap(),
         ),
@@ -286,7 +357,8 @@ export default function HostPublishTabScreen() {
           tailgateName: selectedHostTailgate.groupName,
           itemsPublished: String(itemsPublished),
           totalServings: String(totalServings),
-          pickupWindowMinutes: String(minutesLeft),
+          pickupWindowMinutes: String(pickupHoldMinutes),
+          availabilityWindowMinutes: String(availabilityMinutesLeft),
           pickupNote: trimmedNote,
         },
       });
@@ -296,6 +368,8 @@ export default function HostPublishTabScreen() {
   };
 
   const blockPublish =
+    skipProtected ||
+    currentUser === undefined ||
     selectedHostTailgate === undefined ||
     isPublishing ||
     queriesLoading ||
@@ -334,7 +408,7 @@ export default function HostPublishTabScreen() {
         </Card>
       ) : null}
 
-      {!meLoading && !meError && !currentUser ? (
+      {(skipProtected || (!meLoading && !meError)) && !currentUser ? (
         <Card variant="soft" accentColor={colors.navy}>
           <View style={styles.stateIconWrap}>
             <Ionicons name="person-outline" size={36} color={colors.goldLight} />
@@ -413,9 +487,9 @@ export default function HostPublishTabScreen() {
               <View style={styles.heroStatRow}>
                 <View style={styles.heroStatTextCol}>
                   <Text style={styles.heroStatLabel}>Window</Text>
-                  <Text style={styles.heroStatHint}>Pickup reservation time</Text>
+                  <Text style={styles.heroStatHint}>Availability and pickup hold</Text>
                 </View>
-                <Text style={styles.heroStatValue}>{pickupWindow}</Text>
+                <Text style={styles.heroStatValue}>{availabilityWindow}</Text>
               </View>
             </View>
           </Card>
@@ -591,16 +665,43 @@ export default function HostPublishTabScreen() {
               </View>
 
               <Text style={[styles.sectionEyebrow, styles.sectionEyebrowSpaced]}>Timing</Text>
-              <Text style={styles.sectionTitle}>Pickup window</Text>
-              <Text style={styles.sectionSubtitle}>How long reservations stay open on the feed.</Text>
+              <Text style={styles.sectionTitle}>Availability deadline</Text>
+              <Text style={styles.sectionSubtitle}>
+                Students can claim this surplus until this window ends.
+              </Text>
 
               <View style={styles.segmentTrack}>
-                {pickupWindows.map((window, index) => {
-                  const active = window === pickupWindow;
+                {availabilityWindows.map((window, index) => {
+                  const active = window === availabilityWindow;
                   return (
                     <Pressable
                       key={window}
-                      onPress={() => setPickupWindow(window)}
+                      onPress={() => setAvailabilityWindow(window)}
+                      style={({ pressed }) => [
+                        styles.segmentCell,
+                        index < availabilityWindows.length - 1 && styles.segmentCellBorder,
+                        active && styles.segmentCellActive,
+                        pressed && styles.pressedOpacity,
+                      ]}
+                    >
+                      <Text style={[styles.segmentLabel, active && styles.segmentLabelActive]}>{window}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={[styles.sectionTitle, styles.sectionTitleSpaced]}>Pickup hold after claim</Text>
+              <Text style={styles.sectionSubtitle}>
+                After someone claims, TLAC holds their serving for this long.
+              </Text>
+
+              <View style={styles.segmentTrack}>
+                {pickupWindows.map((window, index) => {
+                  const active = window === pickupWindowMinutes;
+                  return (
+                    <Pressable
+                      key={window}
+                      onPress={() => setPickupWindowMinutes(window)}
                       style={({ pressed }) => [
                         styles.segmentCell,
                         index < pickupWindows.length - 1 && styles.segmentCellBorder,
@@ -644,8 +745,12 @@ export default function HostPublishTabScreen() {
                   <Text style={styles.summaryVal}>{totalServingsSelected}</Text>
                 </View>
                 <View style={styles.summaryRow}>
-                  <Text style={styles.summaryKey}>Window</Text>
-                  <Text style={styles.summaryVal}>{pickupWindow}</Text>
+                  <Text style={styles.summaryKey}>Available until</Text>
+                  <Text style={styles.summaryVal}>{availabilityWindow}</Text>
+                </View>
+                <View style={styles.summaryRow}>
+                  <Text style={styles.summaryKey}>Pickup hold</Text>
+                  <Text style={styles.summaryVal}>{pickupWindowMinutes}</Text>
                 </View>
                 <View style={styles.summaryRow}>
                   <Text style={styles.summaryKey}>Tailgate</Text>
@@ -848,6 +953,9 @@ const styles = StyleSheet.create({
     fontSize: typography.subheading,
     fontWeight: '900',
     marginTop: spacing.xs,
+  },
+  sectionTitleSpaced: {
+    marginTop: spacing.lg,
   },
   sectionSubtitle: {
     marginTop: spacing.xs,

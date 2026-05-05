@@ -14,6 +14,56 @@ import type {
   UpdateSurplusInput,
 } from '@/src/types';
 
+/** Remote POST /surplus — keep body minimal and backend-oriented. */
+function buildRemoteCreateSurplusBody(input: CreateSurplusInput): {
+  tailgateId: string;
+  foodName: string;
+  groupName: string;
+  location: string;
+  servingsRemaining: number;
+  pickupNote: string;
+  pickupWindowMinutes: number;
+  foodItemId?: string;
+  expiresAt: string;
+} {
+  return {
+    tailgateId: input.tailgateId,
+    foodName: input.foodName,
+    groupName: input.groupName,
+    location: input.location,
+    servingsRemaining: input.servingsRemaining,
+    pickupNote: input.pickupNote,
+    pickupWindowMinutes: input.pickupWindowMinutes ?? 30,
+    expiresAt: input.expiresAt ?? new Date(Date.now() + 4 * 60 * 60_000).toISOString(),
+    ...(input.foodItemId !== undefined ? { foodItemId: input.foodItemId } : {}),
+  };
+}
+
+const REMOTE_SURPLUS_PATCH_KEYS = ['servingsRemaining', 'pickupNote', 'status', 'expiresAt'] as const;
+
+/** Remote PATCH /surplus/:id — no id/claimId or frontend-only fields in body. */
+function buildRemoteUpdateSurplusBody(input: UpdateSurplusInput): Partial<{
+  servingsRemaining: number;
+  pickupNote: string;
+  status: SurplusItem['status'];
+  expiresAt: string;
+}> {
+  const { id: _pathId, ...rest } = input;
+  const body: Record<string, unknown> = {};
+  for (const key of REMOTE_SURPLUS_PATCH_KEYS) {
+    const v = rest[key];
+    if (v !== undefined) {
+      body[key] = v;
+    }
+  }
+  return body as Partial<{
+    servingsRemaining: number;
+    pickupNote: string;
+    status: SurplusItem['status'];
+    expiresAt: string;
+  }>;
+}
+
 export const surplusApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getSurplus: builder.query<PaginatedResponse<SurplusItem>, SurplusQueryParams | void>({
@@ -54,9 +104,16 @@ export const surplusApi = baseApi.injectEndpoints({
           const result = await surplusHandlers.createSurplus(body);
           return fromMockApiResult(result as ApiResponse<SurplusItem> | ApiError);
         }
-        return remoteToSingle(await baseQuery({ url: '/surplus', method: 'POST', body }), mapSurplusItem);
+        return remoteToSingle(
+          await baseQuery({ url: '/surplus', method: 'POST', body: buildRemoteCreateSurplusBody(body) }),
+          mapSurplusItem
+        );
       },
-      invalidatesTags: [{ type: 'Surplus', id: 'LIST' }],
+      invalidatesTags: (_result, _error, input) => [
+        { type: 'Surplus', id: 'LIST' },
+        { type: 'Menu', id: `TAILGATE-${input.tailgateId}` },
+        { type: 'Tailgate', id: input.tailgateId },
+      ],
     }),
 
     updateSurplus: builder.mutation<
@@ -68,7 +125,10 @@ export const surplusApi = baseApi.injectEndpoints({
           const result = await surplusHandlers.updateSurplus(id, input);
           return fromMockApiResult(result as ApiResponse<SurplusItem> | ApiError);
         }
-        return remoteToSingle(await baseQuery({ url: `/surplus/${id}`, method: 'PATCH', body: input }), mapSurplusItem);
+        return remoteToSingle(
+          await baseQuery({ url: `/surplus/${id}`, method: 'PATCH', body: buildRemoteUpdateSurplusBody(input) }),
+          mapSurplusItem
+        );
       },
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Surplus', id },
@@ -86,7 +146,7 @@ export const surplusApi = baseApi.injectEndpoints({
           await baseQuery({
             url: `/surplus/${id}`,
             method: 'PATCH',
-            body: { status: 'expired', servingsRemaining: 0 },
+            body: buildRemoteUpdateSurplusBody({ id, status: 'expired', servingsRemaining: 0 }),
           }),
           mapSurplusItem
         );
@@ -102,6 +162,7 @@ export const surplusApi = baseApi.injectEndpoints({
 
 export const {
   useGetSurplusQuery,
+  useLazyGetSurplusQuery,
   useGetSurplusByIdQuery,
   useCreateSurplusMutation,
   useUpdateSurplusMutation,

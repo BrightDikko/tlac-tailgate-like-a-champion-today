@@ -1,10 +1,13 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { useGetMeQuery } from '@/src/api/endpoints/authApi';
 import { useGetCurrentGameQuery } from '@/src/api/endpoints/gamesApi';
 import { useGetTailgatesQuery } from '@/src/api/endpoints/tailgatesApi';
-import { avatarImages } from '@/src/assets/images';
+import { selectCurrentUser, selectIsAuthenticated } from '@/src/features/auth/authSelectors';
+import { useAppSelector } from '@/src/redux/hooks';
+import { API_MODE } from '@/src/services/config/env';
 import {
   AppHeader,
   Card,
@@ -14,14 +17,13 @@ import {
   SecondaryButton,
   SectionHeader,
   TailgateCard,
+  UserAvatar,
 } from '@/src/components';
 import type { GamePhase, Tailgate } from '@/src/types';
 import { messageFromUnknownError } from '@/src/utils/errorMessage';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
-
-const DEFAULT_FEATURED_ID = 'event-1';
 
 export type DiscoverFilterId = 'all' | 'trending' | 'near_me' | 'bbq' | 'entrees' | 'sides' | 'desserts';
 
@@ -60,6 +62,18 @@ function distanceValue(distance: string): number {
   if (!match) return Number.POSITIVE_INFINITY;
   const n = parseFloat(match[0]);
   return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
+}
+
+function statusRank(status: Tailgate['status']): number {
+  if (status === 'active') return 0;
+  if (status === 'planned') return 1;
+  return 2;
+}
+
+function createdAtMs(t: Tailgate): number | null {
+  if (t.createdAt === undefined) return null;
+  const ms = Date.parse(t.createdAt);
+  return Number.isFinite(ms) ? ms : null;
 }
 
 function buildSearchHaystack(t: Tailgate): string {
@@ -174,33 +188,41 @@ function tailgateMatchesCategoryFilter(t: Tailgate, filter: DiscoverFilterId): b
 }
 
 function sortTailgatesForDiscover(list: Tailgate[], filter: DiscoverFilterId): Tailgate[] {
-  const next = [...list];
-  if (filter === 'near_me') {
-    next.sort((a, b) => distanceValue(a.distance) - distanceValue(b.distance));
-    return next;
-  }
-  next.sort((a, b) => b.trendingScore - a.trendingScore);
-  return next;
+  const indexed = list.map((item, index) => ({ item, index }));
+  indexed.sort((a, b) => {
+    if (filter === 'near_me') {
+      const d = distanceValue(a.item.distance) - distanceValue(b.item.distance);
+      return d !== 0 ? d : a.index - b.index;
+    }
+    if (filter === 'trending') {
+      const trend = b.item.trendingScore - a.item.trendingScore;
+      return trend !== 0 ? trend : a.index - b.index;
+    }
+    if (filter === 'all') {
+      const rank = statusRank(a.item.status) - statusRank(b.item.status);
+      if (rank !== 0) return rank;
+      const aCreated = createdAtMs(a.item);
+      const bCreated = createdAtMs(b.item);
+      if (aCreated !== null && bCreated !== null && aCreated !== bCreated) {
+        return bCreated - aCreated;
+      }
+      return a.index - b.index;
+    }
+    const trend = b.item.trendingScore - a.item.trendingScore;
+    return trend !== 0 ? trend : a.index - b.index;
+  });
+  return indexed.map((x) => x.item);
 }
 
 function filterAndSortTailgates(all: Tailgate[], filter: DiscoverFilterId, query: string): Tailgate[] {
-  const narrowed = all.filter((t) => tailgateMatchesCategoryFilter(t, filter));
+  const narrowed = all.filter((t) => {
+    if (filter === 'trending') {
+      return t.status === 'active';
+    }
+    return tailgateMatchesCategoryFilter(t, filter);
+  });
   const searched = narrowed.filter((t) => tailgateMatchesSearch(t, query));
   return sortTailgatesForDiscover(searched, filter);
-}
-
-function pickFeaturedBrowse(all: Tailgate[]): Tailgate | undefined {
-  if (all.length === 0) return undefined;
-  const preferred = all.find((t) => t.id === DEFAULT_FEATURED_ID && t.status === 'active');
-  if (preferred) return preferred;
-  const actives = all.filter((t) => t.status === 'active');
-  if (actives.length === 0) return all[0];
-  return [...actives].sort((a, b) => b.trendingScore - a.trendingScore)[0];
-}
-
-function pickOthersBrowse(all: Tailgate[], featured: Tailgate | undefined): Tailgate[] {
-  if (!featured) return [];
-  return all.filter((t) => t.status === 'active' && t.id !== featured.id);
 }
 
 function resultsSectionCopy(
@@ -222,6 +244,12 @@ function resultsSectionCopy(
         : 'What the gameday network is buzzing about right now.',
     };
   }
+  if (filter === 'all') {
+    return {
+      title: 'All tailgates',
+      subtitle: 'All active, planned, and completed listings for this gameday.',
+    };
+  }
   return {
     title: 'Matching tailgates',
     subtitle: hasQuery
@@ -231,6 +259,12 @@ function resultsSectionCopy(
 }
 
 export default function DiscoverTabScreen() {
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const reduxUser = useAppSelector(selectCurrentUser);
+  const skipMeQuery = reduxUser !== null || (API_MODE === 'remote' && !isAuthenticated);
+  const { data: queriedUser } = useGetMeQuery(undefined, { skip: skipMeQuery });
+  const currentUser = reduxUser ?? queriedUser;
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<DiscoverFilterId>('all');
 
@@ -253,14 +287,6 @@ export default function DiscoverTabScreen() {
   const isLoading = gameLoading || tailgatesLoading;
   const isError = gameError || tailgatesError;
   const combinedError = gameErr ?? tailgatesErr;
-
-  const isBrowseDefault = selectedFilter === 'all' && searchQuery.trim() === '';
-
-  const featuredBrowse = useMemo(() => pickFeaturedBrowse(tailgatesList), [tailgatesList]);
-  const otherActiveBrowse = useMemo(
-    () => pickOthersBrowse(tailgatesList, featuredBrowse),
-    [tailgatesList, featuredBrowse]
-  );
 
   const matchingTailgates = useMemo(
     () => filterAndSortTailgates(tailgatesList, selectedFilter, searchQuery),
@@ -297,9 +323,7 @@ export default function DiscoverTabScreen() {
         }
         rightAction={
           <Pressable accessibilityRole="button" hitSlop={12} style={styles.iconHit}>
-            <View style={styles.avatarRing}>
-              <Image source={avatarImages['user-bright-dikko']} resizeMode="cover" style={styles.avatarImage} />
-            </View>
+            <UserAvatar user={currentUser} size={42} borderColor={colors.gold} fallbackInitials="TL" />
           </Pressable>
         }
       />
@@ -358,57 +382,7 @@ export default function DiscoverTabScreen() {
             ))}
           </ScrollView>
 
-          {isBrowseDefault ? (
-            featuredBrowse ? (
-              <>
-                <SectionHeader
-                  title="Trending now"
-                  subtitle="Popular tailgate groups near campus before kickoff."
-                />
-                <TailgateCard
-                  tailgate={featuredBrowse}
-                  highlightLabel="Top pick"
-                  heroTone="gold"
-                  onPress={() =>
-                    router.push({
-                      pathname: '/student/tailgate-detail',
-                      params: { tailgateId: featuredBrowse.id },
-                    })
-                  }
-                  onViewPress={() =>
-                    router.push({
-                      pathname: '/student/tailgate-detail',
-                      params: { tailgateId: featuredBrowse.id },
-                    })
-                  }
-                  viewLabel="View tailgate"
-                />
-
-                <SectionHeader title="Active near you" subtitle="More groups serving before kickoff." />
-                <View style={styles.tailgateList}>
-                  {otherActiveBrowse.map((tailgate) => (
-                    <TailgateCard
-                      key={tailgate.id}
-                      tailgate={tailgate}
-                      heroTone="navy"
-                      onViewPress={() =>
-                        router.push({
-                          pathname: '/student/tailgate-detail',
-                          params: { tailgateId: tailgate.id },
-                        })
-                      }
-                      viewLabel="View tailgate"
-                    />
-                  ))}
-                </View>
-              </>
-            ) : (
-              <Card style={styles.emptyCard} variant="soft" accentColor={colors.navy}>
-                <Text style={styles.emptyTitle}>No tailgates yet</Text>
-                <Text style={styles.emptyBody}>Check back once hosts publish their gameday groups.</Text>
-              </Card>
-            )
-          ) : matchingTailgates.length > 0 ? (
+          {matchingTailgates.length > 0 ? (
             <>
               <SectionHeader title={resultsCopy.title} subtitle={resultsCopy.subtitle} />
               <View style={styles.tailgateList}>
@@ -455,21 +429,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 44,
     minWidth: 44,
-  },
-  avatarRing: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    borderWidth: 2,
-    borderColor: colors.gold,
-    backgroundColor: colors.surfaceSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
   },
   statusPill: {
     alignSelf: 'center',

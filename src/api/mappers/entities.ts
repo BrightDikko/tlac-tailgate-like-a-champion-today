@@ -87,6 +87,43 @@ function pickImageTone(obj: Record<string, unknown>): TailgateImageTone | undefi
   return undefined;
 }
 
+function nonEmptyOr(value: string | undefined, fallback: string): string {
+  if (value !== undefined && value.trim().length > 0) return value;
+  return fallback;
+}
+
+function nestedRecord(obj: Record<string, unknown>, key: string): Record<string, unknown> | null {
+  return asRecord(obj[key]);
+}
+
+function deriveFeaturedMenuItems(r: Record<string, unknown>): string[] | undefined {
+  const direct = pickStringArray(r, ['featuredMenuItems', 'featured_menu_items']);
+  if (direct !== undefined && direct.length > 0) return direct;
+  const menu = (r.menuItems ?? r.menu_items) as unknown;
+  if (!Array.isArray(menu)) return undefined;
+  const names: string[] = [];
+  for (const row of menu) {
+    const rr = asRecord(row);
+    if (rr === null) continue;
+    const name = pickOptionalString(rr, ['name']);
+    if (name !== undefined && name.trim().length > 0) {
+      names.push(name);
+    }
+    if (names.length >= 3) break;
+  }
+  return names.length > 0 ? names : undefined;
+}
+
+function deriveSurplusMinutesLeft(r: Record<string, unknown>): number {
+  const direct = pickNumber(r, ['minutesLeft', 'minutes_left'], 0);
+  if (direct > 0) return direct;
+  const expiresAt = pickOptionalString(r, ['expiresAt', 'expires_at']);
+  if (expiresAt === undefined) return direct;
+  const expiresMs = Date.parse(expiresAt);
+  if (!Number.isFinite(expiresMs)) return direct;
+  return Math.max(0, Math.ceil((expiresMs - Date.now()) / 60000));
+}
+
 export function mapCurrentUser(raw: unknown): CurrentUser | null {
   const r = asRecord(raw);
   if (r === null) return null;
@@ -128,9 +165,9 @@ export function mapAuthSession(raw: unknown): AuthSession | null {
   const r = asRecord(raw);
   if (r === null) return null;
   const userRaw = r.user ?? r.user_data;
-  const tokensRaw = r.tokens ?? r.token ?? r.tokens_data;
+  const tokensNested = r.tokens ?? r.token ?? r.tokens_data;
+  const tokens = mapAuthTokens(tokensNested) ?? mapAuthTokens(r);
   const user = mapCurrentUser(userRaw);
-  const tokens = mapAuthTokens(tokensRaw);
   if (user === null || tokens === null) return null;
   return { user, tokens };
 }
@@ -157,13 +194,33 @@ export function mapTailgate(raw: unknown): Tailgate | null {
   if (r === null) return null;
   const id = pickId(r);
   if (id === undefined) return null;
+  const host = nestedRecord(r, 'host');
+  const featuredMenuItems = deriveFeaturedMenuItems(r) ?? [];
   return {
     id,
-    groupName: pickString(r, ['groupName', 'group_name'], ''),
-    groupType: pickString(r, ['groupType', 'group_type'], ''),
-    hostName: pickString(r, ['hostName', 'host_name'], ''),
-    description: pickString(r, ['description'], ''),
-    locationDetail: pickString(r, ['locationDetail', 'location_detail'], ''),
+    createdAt: pickOptionalString(r, ['createdAt', 'created_at']),
+    updatedAt: pickOptionalString(r, ['updatedAt', 'updated_at']),
+    groupName: nonEmptyOr(
+      pickOptionalString(r, ['groupName', 'group_name', 'name', 'title']),
+      'Tailgate'
+    ),
+    groupType: nonEmptyOr(
+      pickOptionalString(r, ['groupType', 'group_type', 'type']),
+      'Host tailgate'
+    ),
+    hostName: nonEmptyOr(
+      pickOptionalString(r, ['hostName', 'host_name']) ??
+        (host ? pickOptionalString(host, ['displayName', 'display_name']) : undefined),
+      'Host'
+    ),
+    description: nonEmptyOr(
+      pickOptionalString(r, ['description']),
+      'Tailgate details coming soon.'
+    ),
+    locationDetail: nonEmptyOr(
+      pickOptionalString(r, ['locationDetail', 'location_detail', 'location', 'address']),
+      'Location pending'
+    ),
     status: coerceTailgateStatus(pickString(r, ['status'], 'planned')),
     rating: pickNumber(r, ['rating'], 0),
     reviewCount: pickNumber(r, ['reviewCount', 'review_count'], 0),
@@ -176,7 +233,7 @@ export function mapTailgate(raw: unknown): Tailgate | null {
     hostAvatarKey: pickOptionalString(r, ['hostAvatarKey', 'host_avatar_key']),
     placeImageKey: pickOptionalString(r, ['placeImageKey', 'place_image_key']),
     avatarInitials: pickOptionalString(r, ['avatarInitials', 'avatar_initials']),
-    featuredMenuItems: pickStringArray(r, ['featuredMenuItems', 'featured_menu_items']),
+    featuredMenuItems,
     campusZone: pickOptionalString(r, ['campusZone', 'campus_zone']),
     servingWindow: pickOptionalString(r, ['servingWindow', 'serving_window']),
     hostUserId: pickOptionalString(r, ['hostUserId', 'host_user_id']),
@@ -189,13 +246,19 @@ export function mapFoodItem(raw: unknown): FoodItem | null {
   if (r === null) return null;
   const id = pickId(r);
   if (id === undefined) return null;
+  const tailgate = nestedRecord(r, 'tailgate');
+  const nestedTailgateId = tailgate ? pickOptionalString(tailgate, ['id']) : undefined;
   return {
     id,
-    tailgateId: pickString(r, ['tailgateId', 'tailgate_id'], ''),
+    tailgateId: pickString(r, ['tailgateId', 'tailgate_id'], nestedTailgateId ?? ''),
     name: pickString(r, ['name'], ''),
     category: coerceFoodCategory(pickString(r, ['category'], 'entree')),
     description: pickString(r, ['description'], ''),
-    quantityPrepared: pickNumber(r, ['quantityPrepared', 'quantity_prepared'], 0),
+    quantityPrepared: pickNumber(
+      r,
+      ['quantityPrepared', 'quantity_prepared', 'quantity', 'servingsPrepared', 'servings_prepared'],
+      0
+    ),
     imageKey: pickOptionalString(r, ['imageKey', 'image_key']),
   };
 }
@@ -205,21 +268,42 @@ export function mapSurplusItem(raw: unknown): SurplusItem | null {
   if (r === null) return null;
   const id = pickId(r);
   if (id === undefined) return null;
+  const tailgate = nestedRecord(r, 'tailgate');
+  const foodItem = nestedRecord(r, 'foodItem') ?? nestedRecord(r, 'food_item');
+  const tailgateId =
+    pickOptionalString(r, ['tailgateId', 'tailgate_id']) ??
+    (tailgate ? pickOptionalString(tailgate, ['id']) : undefined) ??
+    '';
+  const foodName =
+    pickOptionalString(r, ['foodName', 'food_name']) ??
+    (foodItem ? pickOptionalString(foodItem, ['name']) : undefined);
+  const groupName =
+    pickOptionalString(r, ['groupName', 'group_name']) ??
+    (tailgate
+      ? pickOptionalString(tailgate, ['groupName', 'group_name', 'name', 'title'])
+      : undefined);
+  const location =
+    pickOptionalString(r, ['location']) ??
+    (tailgate
+      ? pickOptionalString(tailgate, ['locationDetail', 'location_detail', 'location'])
+      : undefined);
+  const pickupNote = pickOptionalString(r, ['pickupNote', 'pickup_note', 'note']);
   return {
     id,
-    tailgateId: pickString(r, ['tailgateId', 'tailgate_id'], ''),
+    tailgateId,
     foodItemId: pickOptionalString(r, ['foodItemId', 'food_item_id']),
-    foodName: pickString(r, ['foodName', 'food_name'], ''),
-    groupName: pickString(r, ['groupName', 'group_name'], ''),
-    location: pickString(r, ['location'], ''),
+    foodName: nonEmptyOr(foodName, 'Surplus item'),
+    groupName: nonEmptyOr(groupName, 'Host listing'),
+    location: nonEmptyOr(location, 'Pickup location pending'),
     servingsRemaining: pickNumber(r, ['servingsRemaining', 'servings_remaining'], 0),
-    minutesLeft: pickNumber(r, ['minutesLeft', 'minutes_left'], 0),
+    minutesLeft: deriveSurplusMinutesLeft(r),
     status: coerceSurplusStatus(pickString(r, ['status'], 'available')),
-    pickupNote: pickString(r, ['pickupNote', 'pickup_note'], ''),
+    pickupNote: nonEmptyOr(pickupNote, 'Check with host at pickup.'),
     claimId: pickOptionalString(r, ['claimId', 'claim_id']),
     imageKey: pickOptionalString(r, ['imageKey', 'image_key']),
     createdAt: pickOptionalString(r, ['createdAt', 'created_at']),
     expiresAt: pickOptionalString(r, ['expiresAt', 'expires_at']),
+    pickupWindowMinutes: pickNumber(r, ['pickupWindowMinutes', 'pickup_window_minutes'], 30),
   };
 }
 
@@ -228,14 +312,19 @@ export function mapClaimRecord(raw: unknown): ClaimRecord | null {
   if (r === null) return null;
   const id = pickId(r);
   if (id === undefined) return null;
+  const surplus = nestedRecord(r, 'surplus');
+  const surplusId =
+    pickOptionalString(r, ['surplusId', 'surplus_id']) ??
+    (surplus ? pickOptionalString(surplus, ['id']) : undefined) ??
+    '';
   return {
     id,
-    surplusId: pickString(r, ['surplusId', 'surplus_id'], ''),
-    servingsClaimed: pickNumber(r, ['servingsClaimed', 'servings_claimed'], 0),
+    surplusId,
+    servingsClaimed: pickNumber(r, ['servingsClaimed', 'servings_claimed', 'quantity', 'servings'], 0),
     status: coerceClaimStatus(pickString(r, ['status'], 'reserved')),
     userId: pickOptionalString(r, ['userId', 'user_id']),
-    claimId: pickOptionalString(r, ['claimId', 'claim_id']),
-    expiresAt: pickOptionalString(r, ['expiresAt', 'expires_at']),
+    claimId: pickOptionalString(r, ['claimId', 'claim_id', 'publicClaimId', 'public_claim_id', 'code']),
+    expiresAt: pickOptionalString(r, ['expiresAt', 'expires_at', 'expires', 'pickupExpiresAt', 'pickup_expires_at']),
     confirmedAt: pickOptionalString(r, ['confirmedAt', 'confirmed_at']),
     releasedAt: pickOptionalString(r, ['releasedAt', 'released_at']),
     createdAt: pickOptionalString(r, ['createdAt', 'created_at']),

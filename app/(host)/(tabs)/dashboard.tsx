@@ -13,6 +13,9 @@ import { placeholderImages, tailgateImages } from '@/src/assets/images';
 import { useGetMeQuery } from '@/src/api/endpoints/authApi';
 import { useGetCurrentGameQuery } from '@/src/api/endpoints/gamesApi';
 import { useGetTailgatesQuery } from '@/src/api/endpoints/tailgatesApi';
+import { selectIsAuthenticated } from '@/src/features/auth/authSelectors';
+import { useAppSelector } from '@/src/redux/hooks';
+import { API_MODE } from '@/src/services/config/env';
 import {
   Card,
   HostBrandedHeader,
@@ -61,13 +64,16 @@ function hostTailgateHeroSource(tailgate: Tailgate): ImageSourcePropType {
 }
 
 export default function HostDashboardTabScreen() {
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const skipProtected = API_MODE === 'remote' && !isAuthenticated;
+
   const {
     data: currentUser,
     isLoading: meLoading,
     isError: meError,
     error: meErr,
     refetch: refetchMe,
-  } = useGetMeQuery();
+  } = useGetMeQuery(undefined, { skip: skipProtected });
 
   const {
     data: currentGame,
@@ -90,20 +96,24 @@ export default function HostDashboardTabScreen() {
   // Mock mode: host ownership is scoped with hostUserId until real auth-backed ownership exists.
   const hostTailgates = tailgatesListResponse?.data ?? [];
 
-  const combinedQueryError = meErr ?? gameErr ?? tailgatesErr;
-  const hasQueryError = meError || gameError || (Boolean(userId) && tailgatesError);
+  const combinedQueryError = (skipProtected ? undefined : meErr) ?? gameErr ?? tailgatesErr;
+  const hasQueryError = (!skipProtected && meError) || gameError || (Boolean(userId) && tailgatesError);
   const queriesLoading =
-    meLoading || (Boolean(userId) && (gameLoading || tailgatesLoading));
+    (!skipProtected && meLoading) || (Boolean(userId) && (gameLoading || tailgatesLoading));
 
   const refetchDashboard = () => {
-    void refetchMe();
+    if (!skipProtected) {
+      void refetchMe();
+    }
     void refetchGame();
-    void refetchTailgates();
+    if (userId) {
+      void refetchTailgates();
+    }
   };
 
   const headerSubtitle = currentGame
     ? `Host · ${phaseLabel(currentGame.phase)} · ${currentGame.matchup}`
-    : meLoading || gameLoading
+    : (!skipProtected && meLoading) || gameLoading
       ? 'Host · Loading gameday…'
       : 'Host · Gameday';
 
@@ -138,7 +148,18 @@ export default function HostDashboardTabScreen() {
         </Card>
       ) : null}
 
-      {currentGame && !gameError && !meError ? (
+      {!queriesLoading && !hasQueryError && skipProtected ? (
+        <Card variant="soft" accentColor={colors.navy}>
+          <Text style={styles.helperCopy}>Sign in with your host account to manage tailgates and surplus.</Text>
+          <PrimaryButton
+            label="Sign in"
+            onPress={() => router.push({ pathname: '/login', params: { redirectTo: '/dashboard' } })}
+            style={styles.emptyCta}
+          />
+        </Card>
+      ) : null}
+
+      {currentGame && !gameError && (!skipProtected ? !meError : true) ? (
         <Card variant="soft" accentColor={colors.navy}>
           <Text style={styles.contextLabel}>Current game</Text>
           <Text style={styles.contextMatchup}>{currentGame.matchup}</Text>

@@ -32,11 +32,79 @@ export function normalizeQueryError(error: FetchBaseQueryError | ApiError): ApiE
   return error;
 }
 
-function readMessageFromErrorData(data: unknown): string | undefined {
+function readObjectFieldErrors(raw: unknown): Record<string, string> | undefined {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === 'string') out[k] = v;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+function formatValidationLoc(loc: unknown): string {
+  if (!Array.isArray(loc)) return '';
+  const parts = loc.map((x) => String(x));
+  const generic = new Set(['body', 'query', 'path']);
+  let start = 0;
+  if (parts.length > 0 && generic.has(parts[0] ?? '')) {
+    start = 1;
+  }
+  return parts.slice(start).join('.');
+}
+
+/** FastAPI HTTP validation: `{ "detail": [ { "loc", "msg", "type" }, ... ] }` */
+function readFastApiValidationDetailArray(detail: unknown): string | undefined {
+  if (!Array.isArray(detail) || detail.length === 0) return undefined;
+  const lines: string[] = [];
+  for (const item of detail.slice(0, 3)) {
+    if (item === null || typeof item !== 'object' || Array.isArray(item)) continue;
+    const o = item as Record<string, unknown>;
+    const msg = typeof o.msg === 'string' ? o.msg.trim() : '';
+    if (msg.length === 0) continue;
+    const path = formatValidationLoc(o.loc);
+    lines.push(path.length > 0 ? `${path}: ${msg}` : msg);
+  }
+  if (lines.length === 0) return undefined;
+  return lines.join('; ');
+}
+
+/** FastAPI-style `{ "detail": { "message", "code", "fieldErrors" } }` or string `detail`. */
+function readFastApiDetail(d: Record<string, unknown>): {
+  message?: string;
+  code?: string;
+  fieldErrors?: Record<string, string>;
+} {
+  const detail = d.detail;
+  if (typeof detail === 'string' && detail.trim().length > 0) {
+    return { message: detail.trim() };
+  }
+  if (detail === null || typeof detail !== 'object' || Array.isArray(detail)) {
+    return {};
+  }
+  const det = detail as Record<string, unknown>;
+  const message =
+    typeof det.message === 'string' && det.message.trim().length > 0 ? det.message.trim() : undefined;
+  const code = typeof det.code === 'string' && det.code.length > 0 ? det.code : undefined;
+  const fe =
+    readObjectFieldErrors(det.fieldErrors) ?? readObjectFieldErrors(det.field_errors);
+  return { message, code, fieldErrors: fe };
+}
+
+/** User-facing message extracted from a remote JSON error body (FastAPI, legacy shapes). */
+export function readMessageFromErrorData(data: unknown): string | undefined {
   if (data === null || data === undefined || typeof data !== 'object') {
     return undefined;
   }
   const d = data as Record<string, unknown>;
+
+  if (Array.isArray(d.detail)) {
+    const fromValidation = readFastApiValidationDetailArray(d.detail);
+    if (fromValidation !== undefined) return fromValidation;
+  }
+
+  const fromDetail = readFastApiDetail(d);
+  if (fromDetail.message !== undefined) return fromDetail.message;
+
   if (typeof d.message === 'string' && d.message.length > 0) return d.message;
   if (typeof d.error === 'string' && d.error.length > 0) return d.error;
   const errors = d.errors;
@@ -54,14 +122,18 @@ function readMessageFromErrorData(data: unknown): string | undefined {
 function readFieldErrors(data: unknown): Record<string, string> | undefined {
   if (data === null || data === undefined || typeof data !== 'object') return undefined;
   const d = data as Record<string, unknown>;
-  const raw = d.fieldErrors ?? d.field_errors;
-  if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) {
-    const out: Record<string, string> = {};
-    for (const [k, v] of Object.entries(raw)) {
-      if (typeof v === 'string') out[k] = v;
-    }
-    return Object.keys(out).length > 0 ? out : undefined;
-  }
+  const top = readObjectFieldErrors(d.fieldErrors) ?? readObjectFieldErrors(d.field_errors);
+  if (top !== undefined) return top;
+  const fromDetail = readFastApiDetail(d).fieldErrors;
+  return fromDetail;
+}
+
+function readErrorCodeFromData(data: unknown): string | undefined {
+  if (data === null || data === undefined || typeof data !== 'object') return undefined;
+  const d = data as Record<string, unknown>;
+  if (typeof d.code === 'string' && d.code.length > 0) return d.code;
+  const fromDetail = readFastApiDetail(d);
+  if (fromDetail.code !== undefined) return fromDetail.code;
   return undefined;
 }
 
@@ -71,8 +143,8 @@ export function normalizeRemoteError(error: FetchBaseQueryError): ApiError | Fet
   if (msg !== undefined) {
     const api: ApiError = { message: msg };
     if (error.data !== null && error.data !== undefined && typeof error.data === 'object') {
-      const d = error.data as Record<string, unknown>;
-      if (typeof d.code === 'string') api.code = d.code;
+      const code = readErrorCodeFromData(error.data);
+      if (code !== undefined) api.code = code;
       const fe = readFieldErrors(error.data);
       if (fe !== undefined) api.fieldErrors = fe;
     }

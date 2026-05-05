@@ -34,6 +34,7 @@ export function AuthBootstrap({ children }: { children: ReactNode }) {
             }
           } catch {
             if (!cancelled) {
+              // Clear invalid credentials; remote public browse/read screens can still load without auth.
               store.dispatch(clearCredentials());
               await tokenStorage.clearTokens();
             }

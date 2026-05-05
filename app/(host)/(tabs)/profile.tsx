@@ -1,14 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { useGetMeQuery, useLogoutMutation } from '@/src/api/endpoints/authApi';
 import { useGetMyImpactQuery } from '@/src/api/endpoints/impactApi';
 import { useGetSurplusQuery } from '@/src/api/endpoints/surplusApi';
 import { useGetTailgatesQuery } from '@/src/api/endpoints/tailgatesApi';
-import { avatarImages } from '@/src/assets/images';
-import { Card, HostBrandedHeader, PrimaryButton, Screen, SecondaryButton } from '@/src/components';
+import { Card, HostBrandedHeader, PrimaryButton, Screen, SecondaryButton, UserAvatar } from '@/src/components';
 import { selectIsAuthenticated } from '@/src/features/auth/authSelectors';
 import { useAppSelector } from '@/src/redux/hooks';
 import { API_MODE } from '@/src/services/config/env';
@@ -27,21 +26,6 @@ function displayNameFor(user?: CurrentUser): string {
   return combined || 'Host';
 }
 
-function initialsFor(user?: CurrentUser): string {
-  const explicit = user?.avatarInitials?.trim();
-  if (explicit) return explicit.toUpperCase().slice(0, 3);
-  const first = user?.firstName?.trim().charAt(0) ?? '';
-  const last = user?.lastName?.trim().charAt(0) ?? '';
-  const pair = `${first}${last}`.toUpperCase();
-  return pair || 'TL';
-}
-
-function avatarSourceFor(user?: CurrentUser): ImageSourcePropType | undefined {
-  const key = user?.avatarImageKey;
-  if (!key) return undefined;
-  return (avatarImages as Record<string, ImageSourcePropType>)[key];
-}
-
 function roleLineFor(user?: CurrentUser): string {
   const affiliation = user?.affiliationLabel?.trim();
   if (!affiliation) return 'Host · TLAC gameday coordinator';
@@ -52,6 +36,7 @@ function roleLineFor(user?: CurrentUser): string {
 export default function HostProfileTabScreen() {
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const skipMeQuery = API_MODE === 'remote' && !isAuthenticated;
+  const skipImpactQuery = API_MODE === 'remote' && !isAuthenticated;
 
   const {
     data: currentUser,
@@ -88,7 +73,7 @@ export default function HostProfileTabScreen() {
     isError: impactError,
     error: impactErr,
     refetch: refetchImpact,
-  } = useGetMyImpactQuery();
+  } = useGetMyImpactQuery(undefined, { skip: skipImpactQuery });
 
   const hostTailgates = tailgatesResponse?.data ?? [];
   const allSurplus = surplusResponse?.data ?? [];
@@ -103,17 +88,23 @@ export default function HostProfileTabScreen() {
   const completedCount = hostTailgates.filter((t) => t.status === 'completed').length;
 
   const queriesLoading =
-    (!skipMeQuery && meLoading) || (Boolean(userId) && (tailgatesLoading || surplusLoading || impactLoading));
-  const hasQueryError = meError || (Boolean(userId) && (tailgatesError || surplusError || impactError));
-  const combinedError = meErr ?? tailgatesErr ?? surplusErr ?? impactErr;
+    (!skipMeQuery && meLoading) ||
+    (Boolean(userId) && (tailgatesLoading || surplusLoading || (!skipImpactQuery && impactLoading)));
+  const hasQueryError =
+    meError || (Boolean(userId) && (tailgatesError || surplusError || (!skipImpactQuery && impactError)));
+  const combinedError = meErr ?? tailgatesErr ?? surplusErr ?? (skipImpactQuery ? undefined : impactErr);
 
   const refetchAll = () => {
     if (!skipMeQuery) {
       void refetchMe();
     }
-    void refetchTailgates();
+    if (userId) {
+      void refetchTailgates();
+    }
     void refetchSurplus();
-    void refetchImpact();
+    if (!skipImpactQuery) {
+      void refetchImpact();
+    }
   };
 
   const onLogout = async () => {
@@ -127,8 +118,6 @@ export default function HostProfileTabScreen() {
   };
 
   const name = displayNameFor(currentUser);
-  const initials = initialsFor(currentUser);
-  const avatarSource = avatarSourceFor(currentUser);
   const roleLine = roleLineFor(currentUser);
 
   return (
@@ -154,7 +143,11 @@ export default function HostProfileTabScreen() {
         <Card variant="soft" accentColor={colors.navy}>
           <Text style={styles.errorText}>Sign in to view your host profile.</Text>
           {API_MODE === 'remote' ? (
-            <PrimaryButton label="Sign in" onPress={() => router.push('/login')} style={styles.retryButton} />
+            <PrimaryButton
+              label="Sign in"
+              onPress={() => router.push({ pathname: '/login', params: { redirectTo: '/dashboard' } })}
+              style={styles.retryButton}
+            />
           ) : null}
         </Card>
       ) : null}
@@ -162,13 +155,7 @@ export default function HostProfileTabScreen() {
       {!queriesLoading && !hasQueryError && currentUser ? (
         <>
           <Card style={styles.heroCard} accentColor={colors.navy}>
-            {avatarSource ? (
-              <Image source={avatarSource} resizeMode="cover" style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{initials}</Text>
-              </View>
-            )}
+            <UserAvatar user={currentUser} size={104} borderColor={colors.gold} fallbackInitials="TL" />
             <Text style={styles.name}>{name}</Text>
             <Text style={styles.roleLine}>{roleLine}</Text>
             <View style={styles.statRow}>
@@ -278,29 +265,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.md,
     paddingVertical: spacing.xxl,
-  },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.gold,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: colors.white,
-  },
-  avatarImage: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 3,
-    borderColor: colors.white,
-    backgroundColor: colors.cream,
-  },
-  avatarText: {
-    color: colors.textInverse,
-    fontSize: typography.subheading,
-    fontWeight: '900',
   },
   name: {
     color: colors.text,

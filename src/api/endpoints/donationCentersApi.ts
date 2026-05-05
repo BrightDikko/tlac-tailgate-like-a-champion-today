@@ -52,4 +52,8 @@ export const donationCentersApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useGetDonationCentersQuery, useGetDonationCenterByIdQuery } = donationCentersApi;
+export const {
+  useGetDonationCentersQuery,
+  useLazyGetDonationCentersQuery,
+  useGetDonationCenterByIdQuery,
+} = donationCentersApi;

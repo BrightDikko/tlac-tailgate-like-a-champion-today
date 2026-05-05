@@ -1,5 +1,6 @@
+/** Remote API sends only `{ servingsClaimed }`; `surplusId` is optional and used for mock validation. */
 export type ClaimInput = {
-  surplusId: string;
+  surplusId?: string;
   servingsClaimed: number;
 };
 

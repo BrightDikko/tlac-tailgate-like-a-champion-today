@@ -43,6 +43,7 @@ export const claimsApi = baseApi.injectEndpoints({
     >({
       queryFn: async ({ surplusId, input }, _api, _extraOptions, baseQuery) => {
         if (API_MODE === 'mock') {
+          // Mock validation still allows optional `surplusId` in body for legacy parity.
           const result = await claimsHandlers.claimSurplus(surplusId, input);
           return fromMockApiResult(result as ApiResponse<ClaimRecord> | ApiError);
         }
@@ -50,7 +51,8 @@ export const claimsApi = baseApi.injectEndpoints({
           await baseQuery({
             url: `/surplus/${surplusId}/claims`,
             method: 'POST',
-            body: input,
+            // Path owns `surplusId`; remote body intentionally keeps only claim quantity.
+            body: { servingsClaimed: input.servingsClaimed },
           }),
           mapClaimRecord
         );
@@ -60,6 +62,8 @@ export const claimsApi = baseApi.injectEndpoints({
         ...(result?.id ? [{ type: 'Claim' as const, id: result.id }] : []),
         { type: 'Surplus', id: result?.surplusId ?? surplusId },
         { type: 'Surplus', id: 'LIST' },
+        { type: 'Impact', id: 'ME' },
+        { type: 'Impact', id: 'GLOBAL' },
       ],
     }),
 
@@ -74,6 +78,7 @@ export const claimsApi = baseApi.injectEndpoints({
         }
         return remoteToSingle(
           await baseQuery({
+            // Uses backend claim record id (`ClaimRecord.id`), not display-only `claimId`.
             url: `/claims/${id}/confirm`,
             method: 'POST',
             body: input ?? {},
@@ -86,6 +91,8 @@ export const claimsApi = baseApi.injectEndpoints({
         { type: 'Claim', id: 'LIST' },
         ...(result?.surplusId ? [{ type: 'Surplus' as const, id: result.surplusId }] : []),
         { type: 'Surplus', id: 'LIST' },
+        { type: 'Impact', id: 'ME' },
+        { type: 'Impact', id: 'GLOBAL' },
       ],
     }),
 
@@ -100,6 +107,7 @@ export const claimsApi = baseApi.injectEndpoints({
         }
         return remoteToSingle(
           await baseQuery({
+            // Uses backend claim record id (`ClaimRecord.id`), not display-only `claimId`.
             url: `/claims/${id}/release`,
             method: 'POST',
             body: input ?? {},
@@ -112,6 +120,8 @@ export const claimsApi = baseApi.injectEndpoints({
         { type: 'Claim', id: 'LIST' },
         ...(result?.surplusId ? [{ type: 'Surplus' as const, id: result.surplusId }] : []),
         { type: 'Surplus', id: 'LIST' },
+        { type: 'Impact', id: 'ME' },
+        { type: 'Impact', id: 'GLOBAL' },
       ],
     }),
   }),

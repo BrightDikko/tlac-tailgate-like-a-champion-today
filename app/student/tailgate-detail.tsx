@@ -120,11 +120,17 @@ export default function TailgateDetailScreen() {
                 <Text style={styles.metaText}>{tailgate.distance}</Text>
               </View>
               <View style={styles.tagsRow}>
-                {tailgate.tags.map((tag) => (
-                  <View key={tag} style={styles.tagChip}>
-                    <Text style={styles.tagText}>{tag}</Text>
+                {tailgate.tags.length > 0 ? (
+                  tailgate.tags.map((tag) => (
+                    <View key={tag} style={styles.tagChip}>
+                      <Text style={styles.tagText}>{tag}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.tagChip}>
+                    <Text style={styles.tagText}>Gameday host</Text>
                   </View>
-                ))}
+                )}
               </View>
               <Text style={styles.description}>{tailgate.description}</Text>
             </View>
@@ -133,7 +139,9 @@ export default function TailgateDetailScreen() {
           <Card variant="soft">
             <Text style={styles.gameContextTitle}>Game Context</Text>
             <Text style={styles.gameContextText}>
-              {currentGame?.matchup ?? ''} • Kickoff {currentGame?.kickoffTime ?? ''}
+              {currentGame
+                ? `${currentGame.matchup} • Kickoff ${currentGame.kickoffTime}`
+                : 'Current game details are loading.'}
             </Text>
           </Card>
 

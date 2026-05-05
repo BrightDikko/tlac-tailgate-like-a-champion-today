@@ -21,4 +21,4 @@ export const gamesApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useGetCurrentGameQuery } = gamesApi;
+export const { useGetCurrentGameQuery, useLazyGetCurrentGameQuery } = gamesApi;

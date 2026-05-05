@@ -32,4 +32,4 @@ export const impactApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useGetMyImpactQuery, useGetGlobalImpactQuery } = impactApi;
+export const { useGetMyImpactQuery, useGetGlobalImpactQuery, useLazyGetGlobalImpactQuery } = impactApi;

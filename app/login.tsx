@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import {
   ActivityIndicator,
   Image,
@@ -20,13 +20,14 @@ import { useLoginMutation } from '@/src/api/endpoints/authApi';
 import { brandImages } from '@/src/assets/images';
 import { Card, PrimaryButton, SecondaryButton } from '@/src/components';
 import { selectAccessToken, selectCurrentUser, selectIsAuthenticated } from '@/src/features/auth/authSelectors';
-import { defaultHrefForUserRole } from '@/src/features/auth/postAuthRoute';
 import { useAppSelector } from '@/src/redux/hooks';
 import { API_MODE } from '@/src/services/config/env';
 import { colors } from '@/src/theme/colors';
 import { spacing } from '@/src/theme/spacing';
 import { typography } from '@/src/theme/typography';
 import { messageFromUnknownError } from '@/src/utils/errorMessage';
+import { hrefAfterAuthFromParams } from '@/src/utils/postAuthRedirect';
+import { paramOne } from '@/src/utils/routeParams';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -34,6 +35,7 @@ export default function LoginScreen() {
   const [formError, setFormError] = useState<string | null>(null);
 
   const [login, { isLoading }] = useLoginMutation();
+  const searchParams = useLocalSearchParams();
 
   const isAuthenticated = useAppSelector(selectIsAuthenticated);
   const accessToken = useAppSelector(selectAccessToken);
@@ -47,8 +49,8 @@ export default function LoginScreen() {
     if (!isAuthenticated || accessToken === null || accessToken.length === 0 || user === null) {
       return;
     }
-    router.replace(defaultHrefForUserRole(user.role));
-  }, [isAuthenticated, accessToken, user]);
+    router.replace(hrefAfterAuthFromParams(user.role, searchParams));
+  }, [isAuthenticated, accessToken, user, searchParams]);
 
   const onSubmit = async () => {
     setFormError(null);
@@ -62,7 +64,7 @@ export default function LoginScreen() {
         email: trimmedEmail,
         password,
       }).unwrap();
-      router.replace(defaultHrefForUserRole(session.user.role));
+      router.replace(hrefAfterAuthFromParams(session.user.role, searchParams));
     } catch (err) {
       setFormError(messageFromUnknownError(err, 'Sign in failed. Please try again.'));
     }
@@ -164,7 +166,16 @@ export default function LoginScreen() {
           <View style={styles.footer}>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push('/register')}
+              onPress={() => {
+                const next: Record<string, string> = {};
+                const r = paramOne(searchParams.redirectTo);
+                const it = paramOne(searchParams.intent);
+                const sid = paramOne(searchParams.surplusId);
+                if (r !== undefined) next.redirectTo = r;
+                if (it !== undefined) next.intent = it;
+                if (sid !== undefined) next.surplusId = sid;
+                router.push(Object.keys(next).length > 0 ? { pathname: '/register', params: next } : '/register');
+              }}
               disabled={isLoading}
               style={({ pressed }) => [styles.linkWrap, pressed && styles.linkPressed]}
             >

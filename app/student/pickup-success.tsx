@@ -11,12 +11,14 @@ import { paramOne } from '@/src/utils/routeParams';
 export default function PickupSuccessScreen() {
   const { shouldRedirectToLogin } = useRemoteAuthGate();
   const params = useLocalSearchParams<{
+    claimRecordId?: string;
     claimId?: string;
     servingsClaimed?: string;
     foodName?: string;
     groupName?: string;
   }>();
 
+  const claimRecordIdParam = paramOne(params.claimRecordId);
   const claimIdParam = paramOne(params.claimId);
   const servingsParam = paramOne(params.servingsClaimed);
   const foodNameParam = paramOne(params.foodName);
@@ -61,6 +63,9 @@ export default function PickupSuccessScreen() {
           <Text style={styles.summaryLine}>Pickup confirmed</Text>
         )}
         {displayClaimId ? <Text style={styles.summaryLine}>Claim ID {displayClaimId}</Text> : null}
+        {claimRecordIdParam && claimRecordIdParam.length > 0 ? (
+          <Text style={styles.debugLine}>Ref {claimRecordIdParam}</Text>
+        ) : null}
         <Text style={styles.summaryLine}>{displayGroup}</Text>
         {foodNameParam && foodNameParam.length > 0 ? (
           <Text style={styles.summaryLine}>{foodNameParam}</Text>
@@ -119,5 +124,11 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.body,
     fontWeight: '700',
+  },
+  debugLine: {
+    marginTop: spacing.xs,
+    color: colors.muted,
+    fontSize: typography.caption,
+    fontWeight: '600',
   },
 });

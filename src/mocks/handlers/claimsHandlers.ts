@@ -31,7 +31,7 @@ export async function claimSurplus(
 ): Promise<ApiResponse<ClaimRecord> | ApiError> {
   await mockDelay();
 
-  if (input.surplusId !== surplusId) {
+  if (input.surplusId !== undefined && input.surplusId !== surplusId) {
     return fail('Surplus id mismatch', 'BAD_REQUEST');
   }
 
@@ -57,7 +57,13 @@ export async function claimSurplus(
   const publicClaimId = generatePublicClaimId();
   const nowDate = new Date();
   const now = nowDate.toISOString();
-  const expiresAt = new Date(nowDate.getTime() + 30 * 60 * 1000).toISOString();
+  const pickupWindowMinutes = surplus.pickupWindowMinutes ?? 30;
+  const proposedClaimExpiresAtMs = nowDate.getTime() + pickupWindowMinutes * 60 * 1000;
+  const surplusExpiresAtMs = surplus.expiresAt ? Date.parse(surplus.expiresAt) : Number.NaN;
+  const claimExpiresAtMs = Number.isFinite(surplusExpiresAtMs)
+    ? Math.min(proposedClaimExpiresAtMs, surplusExpiresAtMs)
+    : proposedClaimExpiresAtMs;
+  const expiresAt = new Date(claimExpiresAtMs).toISOString();
 
   const record: ClaimRecord = {
     id: `claim-${Date.now()}`,

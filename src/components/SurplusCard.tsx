@@ -14,6 +14,7 @@ import type { SurplusItem } from '../types';
 import { colors } from '../theme/colors';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
+import { formatClockTime, formatDurationMinutes } from '../utils/timeDisplay';
 import { Card } from './Card';
 import { PrimaryButton } from './PrimaryButton';
 import { StatusChip } from './StatusChip';
@@ -61,14 +62,18 @@ export function SurplusCard({
       <Text style={styles.groupName}>{item.groupName}</Text>
       <Text style={styles.location}>{item.location}</Text>
 
-      <View style={styles.statGrid}>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>Servings Left</Text>
-          <Text style={styles.statValue}>{item.servingsRemaining}</Text>
+      <View style={styles.detailList}>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Servings left</Text>
+          <Text style={styles.detailValue}>{item.servingsRemaining}</Text>
         </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statLabel}>Minutes Left</Text>
-          <Text style={styles.statValue}>{item.minutesLeft}</Text>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Available until</Text>
+          <Text style={styles.detailValue}>{formatClockTime(item.expiresAt)}</Text>
+        </View>
+        <View style={styles.detailRow}>
+          <Text style={styles.detailLabel}>Pickup window</Text>
+          <Text style={styles.detailValue}>{formatDurationMinutes(item.pickupWindowMinutes ?? 30)}</Text>
         </View>
       </View>
 
@@ -130,32 +135,35 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     lineHeight: 22,
   },
-  statGrid: {
+  detailList: {
     marginTop: spacing.lg,
-    flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm,
   },
-  statCard: {
-    flex: 1,
-    borderRadius: 12,
+  detailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceSoft,
-    paddingVertical: spacing.md,
+    borderRadius: 12,
+    paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.md,
-    gap: spacing.sm,
+    gap: spacing.md,
   },
-  statLabel: {
+  detailLabel: {
+    flex: 1,
     color: colors.muted,
     fontSize: typography.caption,
     fontWeight: '600',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
-  statValue: {
+  detailValue: {
     color: colors.text,
-    fontSize: typography.subheading,
+    fontSize: typography.body,
     fontWeight: '800',
+    textAlign: 'right',
   },
   claimIdRow: {
     marginTop: spacing.lg,

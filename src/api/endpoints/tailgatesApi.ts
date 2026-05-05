@@ -17,8 +17,64 @@ import type {
   Tailgate,
   TailgateDeleteResult,
   TailgateQueryParams,
+  TailgateStatus,
   UpdateTailgateInput,
 } from '@/src/types';
+
+/** Remote POST /tailgates — omit mock-only / server-derived fields. */
+function buildRemoteCreateTailgateBody(input: CreateTailgateInput): {
+  groupName: string;
+  groupType: string;
+  hostName: string;
+  locationDetail: string;
+  description: string;
+  status: TailgateStatus;
+} {
+  return {
+    groupName: input.groupName,
+    groupType: input.groupType,
+    hostName: input.hostName,
+    locationDetail: input.locationDetail,
+    description: input.description,
+    status: input.status,
+  };
+}
+
+const REMOTE_TAILGATE_PATCH_KEYS = [
+  'groupName',
+  'groupType',
+  'hostName',
+  'locationDetail',
+  'description',
+  'status',
+] as const satisfies readonly (keyof Omit<Tailgate, 'id'>)[];
+
+/** Remote PATCH /tailgates/:id — no `id` in body; only whitelisted editable fields that are defined. */
+function buildRemoteUpdateTailgateBody(input: UpdateTailgateInput): Partial<{
+  groupName: string;
+  groupType: string;
+  hostName: string;
+  locationDetail: string;
+  description: string;
+  status: TailgateStatus;
+}> {
+  const { id: _pathId, ...rest } = input;
+  const body: Record<string, unknown> = {};
+  for (const key of REMOTE_TAILGATE_PATCH_KEYS) {
+    const v = rest[key];
+    if (v !== undefined) {
+      body[key] = v;
+    }
+  }
+  return body as Partial<{
+    groupName: string;
+    groupType: string;
+    hostName: string;
+    locationDetail: string;
+    description: string;
+    status: TailgateStatus;
+  }>;
+}
 
 export const tailgatesApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
@@ -60,7 +116,10 @@ export const tailgatesApi = baseApi.injectEndpoints({
           const res = await tailgatesHandlers.createTailgate(body);
           return fromMockApiResult(res as ApiResponse<Tailgate> | ApiError);
         }
-        return remoteToSingle(await baseQuery({ url: '/tailgates', method: 'POST', body }), mapTailgate);
+        return remoteToSingle(
+          await baseQuery({ url: '/tailgates', method: 'POST', body: buildRemoteCreateTailgateBody(body) }),
+          mapTailgate
+        );
       },
       invalidatesTags: [{ type: 'Tailgate', id: 'LIST' }],
     }),
@@ -74,7 +133,10 @@ export const tailgatesApi = baseApi.injectEndpoints({
           const result = await tailgatesHandlers.updateTailgate(id, input);
           return fromMockApiResult(result as ApiResponse<Tailgate> | ApiError);
         }
-        return remoteToSingle(await baseQuery({ url: `/tailgates/${id}`, method: 'PATCH', body: input }), mapTailgate);
+        return remoteToSingle(
+          await baseQuery({ url: `/tailgates/${id}`, method: 'PATCH', body: buildRemoteUpdateTailgateBody(input) }),
+          mapTailgate
+        );
       },
       invalidatesTags: (_result, _error, { id }) => [
         { type: 'Tailgate', id },
@@ -117,6 +179,7 @@ export const tailgatesApi = baseApi.injectEndpoints({
 
 export const {
   useGetTailgatesQuery,
+  useLazyGetTailgatesQuery,
   useGetTailgateByIdQuery,
   useCreateTailgateMutation,
   useUpdateTailgateMutation,

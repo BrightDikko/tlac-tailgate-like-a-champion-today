@@ -1,4 +1,4 @@
-import type { ClaimRecord, CurrentUser, DonationRecord, RatingRecord } from '@/src/types';
+import type { ClaimRecord, CurrentUser, DonationRecord, RatingRecord, SurplusItem } from '@/src/types';
 
 import currentUserJson from '@/src/data/json/currentUser.json';
 import {
@@ -51,6 +51,21 @@ export function createAnonymousMockUser(): CurrentUser {
   };
 }
 
+function normalizeMockSurplusItems(items: SurplusItem[]): SurplusItem[] {
+  const now = Date.now();
+  return items.map((item, index) => {
+    const availabilityMinutes = 120 + index * 30;
+    const expiresAt = new Date(now + availabilityMinutes * 60_000).toISOString();
+    const minutesLeft = Math.max(1, Math.ceil((Date.parse(expiresAt) - now) / 60_000));
+    return {
+      ...item,
+      expiresAt,
+      minutesLeft,
+      pickupWindowMinutes: item.pickupWindowMinutes ?? 30,
+    };
+  });
+}
+
 export const mockDb = {
   currentGame,
   /** Reflects the active mock session user (registered user, demo persona, or anonymous guest). */
@@ -64,6 +79,6 @@ export const mockDb = {
   menuItems: [...menuItems],
   ratings: [] as RatingRecord[],
   reviews: [...reviews],
-  surplusItems: [...surplusItems],
+  surplusItems: normalizeMockSurplusItems([...surplusItems]),
   tailgates: [...tailgates],
 };

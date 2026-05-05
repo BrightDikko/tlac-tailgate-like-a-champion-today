@@ -38,6 +38,8 @@ export type TailgateImageTone = 'stadium' | 'goldLot' | 'quad' | 'tailgateClassi
 
 export interface Tailgate {
   id: string;
+  createdAt?: string;
+  updatedAt?: string;
   groupName: string;
   groupType: string;
   hostName: string;
@@ -102,6 +104,7 @@ export interface SurplusItem {
   imageKey?: string;
   createdAt?: string;
   expiresAt?: string;
+  pickupWindowMinutes?: number;
 }
 
 export interface Review {

@@ -10,6 +10,9 @@ import {
   View,
 } from 'react-native';
 import { useGetMeQuery } from '@/src/api/endpoints/authApi';
+import { selectIsAuthenticated } from '@/src/features/auth/authSelectors';
+import { useAppSelector } from '@/src/redux/hooks';
+import { API_MODE } from '@/src/services/config/env';
 import { useCreateMenuItemMutation } from '@/src/api/endpoints/menuApi';
 import { useCreateTailgateMutation } from '@/src/api/endpoints/tailgatesApi';
 import { Card, FilterChip, PrimaryButton, Screen, SecondaryButton, SectionHeader } from '@/src/components';
@@ -56,12 +59,15 @@ function deriveAvatarInitials(name: string): string {
 }
 
 export default function CreateTailgateScreen() {
+  const isAuthenticated = useAppSelector(selectIsAuthenticated);
+  const skipProtected = API_MODE === 'remote' && !isAuthenticated;
+
   const {
     data: currentUser,
     isLoading: meLoading,
     isError: meError,
     error: meErr,
-  } = useGetMeQuery();
+  } = useGetMeQuery(undefined, { skip: skipProtected });
 
   const [groupName, setGroupName] = useState('');
   const [groupType, setGroupType] = useState('');
@@ -237,10 +243,13 @@ export default function CreateTailgateScreen() {
     }
   };
 
+  const formDisabled = skipProtected || meLoading;
+
   const createDisabled =
+    skipProtected ||
     !currentUser?.id ||
     meLoading ||
-    meError ||
+    (!skipProtected && meError) ||
     isCreatingTailgate ||
     isCreatingMenuItem;
 
@@ -256,7 +265,18 @@ export default function CreateTailgateScreen() {
       </View>
       <SectionHeader title="Create tailgate" subtitle="Set up a group listing for gameday." />
 
-      {meError ? (
+      {skipProtected ? (
+        <Card variant="soft" accentColor={colors.navy}>
+          <Text style={styles.errorText}>Sign in to create a tailgate.</Text>
+          <PrimaryButton
+            label="Sign in"
+            onPress={() => router.push({ pathname: '/login', params: { redirectTo: '/dashboard' } })}
+            style={styles.stackGap}
+          />
+        </Card>
+      ) : null}
+
+      {!skipProtected && meError ? (
         <Card variant="soft">
           <Text style={styles.errorText}>{messageFromUnknownError(meErr, 'Could not create tailgate.')}</Text>
         </Card>
@@ -309,6 +329,7 @@ export default function CreateTailgateScreen() {
           placeholder="Domer Grill Crew"
           placeholderTextColor={colors.muted}
           style={styles.input}
+          editable={!formDisabled}
         />
 
         <Text style={styles.label}>Group type</Text>
@@ -318,6 +339,7 @@ export default function CreateTailgateScreen() {
           placeholder="Alumni chapter"
           placeholderTextColor={colors.muted}
           style={styles.input}
+          editable={!formDisabled}
         />
 
         <Text style={styles.label}>Host name</Text>
@@ -327,7 +349,7 @@ export default function CreateTailgateScreen() {
           placeholder="Primary host"
           placeholderTextColor={colors.muted}
           style={styles.input}
-          editable={!meLoading}
+          editable={!formDisabled}
         />
 
         <Text style={styles.label}>Location</Text>
@@ -337,6 +359,7 @@ export default function CreateTailgateScreen() {
           placeholder="Lot B, blue tent"
           placeholderTextColor={colors.muted}
           style={styles.input}
+          editable={!formDisabled}
         />
 
         <Text style={styles.label}>Description</Text>
@@ -347,6 +370,7 @@ export default function CreateTailgateScreen() {
           placeholderTextColor={colors.muted}
           style={[styles.input, styles.inputMultiline]}
           multiline
+          editable={!formDisabled}
         />
       </Card>
 
@@ -392,6 +416,7 @@ export default function CreateTailgateScreen() {
           placeholder="Grilled chicken sliders"
           placeholderTextColor={colors.muted}
           style={styles.input}
+          editable={!formDisabled}
         />
 
         <Text style={styles.label}>Dish photo</Text>
@@ -447,6 +472,7 @@ export default function CreateTailgateScreen() {
           placeholderTextColor={colors.muted}
           style={[styles.input, styles.inputMultiline]}
           multiline
+          editable={!formDisabled}
         />
 
         <Text style={styles.label}>Quantity prepared</Text>
@@ -457,9 +483,10 @@ export default function CreateTailgateScreen() {
           placeholderTextColor={colors.muted}
           style={styles.input}
           keyboardType="number-pad"
+          editable={!formDisabled}
         />
 
-        <PrimaryButton label={draftActionLabel} onPress={handleAddOrSaveDraft} />
+        <PrimaryButton label={draftActionLabel} onPress={handleAddOrSaveDraft} disabled={formDisabled} />
         {editingDraftIndex !== null ? (
           <SecondaryButton label="Cancel edit" onPress={handleCancelDraftEdit} />
         ) : null}
@@ -480,8 +507,8 @@ export default function CreateTailgateScreen() {
                 </View>
               </View>
               <View style={styles.draftActions}>
-                <SecondaryButton label="Edit" onPress={() => handleEditDraft(index)} />
-                <SecondaryButton label="Remove" onPress={() => handleRemoveDraft(index)} />
+                <SecondaryButton label="Edit" onPress={() => handleEditDraft(index)} disabled={formDisabled} />
+                <SecondaryButton label="Remove" onPress={() => handleRemoveDraft(index)} disabled={formDisabled} />
               </View>
             </Card>
           ))}
