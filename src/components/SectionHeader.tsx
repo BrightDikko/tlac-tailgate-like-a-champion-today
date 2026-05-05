@@ -50,6 +50,7 @@ const styles = StyleSheet.create({
     fontSize: typography.subheading,
     fontWeight: '800',
     letterSpacing: 0.2,
+    marginBottom: spacing.xs,
   },
   subtitle: {
     color: colors.muted,

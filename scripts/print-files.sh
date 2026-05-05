@@ -9,6 +9,8 @@ find . \
   -o -path './.vscode' \
   -o -path './assets' \
   -o -path './starter-backup' \
+  -o -path './dist' \
+  -o -path './.web-preview' \
   \) -prune \
   -o \( \
     -name '*.tsx' \

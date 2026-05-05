@@ -472,6 +472,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+    marginBottom: spacing.sm,
   },
   contextTitle: {
     marginTop: spacing.xs,

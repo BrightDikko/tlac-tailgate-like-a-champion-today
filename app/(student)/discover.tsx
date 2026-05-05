@@ -1,10 +1,12 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ImageBackground, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useGetMeQuery } from '@/src/api/endpoints/authApi';
 import { useGetCurrentGameQuery } from '@/src/api/endpoints/gamesApi';
 import { useGetTailgatesQuery } from '@/src/api/endpoints/tailgatesApi';
+import { placeImages } from '@/src/assets/images';
 import { selectCurrentUser, selectIsAuthenticated } from '@/src/features/auth/authSelectors';
 import { useAppSelector } from '@/src/redux/hooks';
 import { API_MODE } from '@/src/services/config/env';
@@ -55,6 +57,10 @@ const BBQ_TERMS = [
 
 function phaseLabel(phase: GamePhase) {
   return phase === 'postgame' ? 'Post-game' : 'Pregame';
+}
+
+function phaseBadgeLabel(phase: GamePhase): string {
+  return phase === 'postgame' ? 'POSTGAME' : 'PREGAME';
 }
 
 function distanceValue(distance: string): number {
@@ -333,8 +339,10 @@ export default function DiscoverTabScreen() {
         <Text style={styles.statusPillText}>Tailgates active</Text>
       </View>
 
-      <Text style={styles.screenLead}>Discover</Text>
-      <Text style={styles.screenLeadMuted}>Browse menus and find tailgates around gameday.</Text>
+      <View style={styles.screenLeadContainer}>
+        <Text style={styles.screenLead}>Discover Tailgates</Text>
+        <Text style={styles.screenLeadMuted}>Browse menus and find tailgates around gameday.</Text>
+      </View>
 
       {isLoading ? (
         <Card style={styles.gameCard} variant="soft">
@@ -353,12 +361,53 @@ export default function DiscoverTabScreen() {
         <>
           <Card style={styles.gameCard} noPadding>
             <View style={styles.gameTopAccent} />
-            <View style={styles.gameCardInner}>
-              <Text style={styles.gameLabel}>Current game</Text>
-              <Text style={styles.gameMatchup}>{currentGame?.matchup ?? ''}</Text>
-              <Text style={styles.gameMeta}>{metaLine}</Text>
-              <Text style={styles.gameMeta}>{currentGame?.location ?? ''}</Text>
-            </View>
+            <ImageBackground
+              source={placeImages['notre-dame-stadium']}
+              resizeMode="cover"
+              style={styles.currentGameCard}
+              imageStyle={styles.currentGameImage}
+            >
+              <View style={styles.currentGameOverlay} />
+              <View style={styles.currentGameContent}>
+                <View style={styles.currentGameTopRow}>
+                  <Text style={styles.currentGameLabel}>Current game</Text>
+                  <Text style={styles.currentGamePhaseText}>
+                    {currentGame ? phaseBadgeLabel(currentGame.phase) : 'GAMEDAY'}
+                  </Text>
+                </View>
+
+                <Text style={styles.currentGameTitle}>{currentGame?.matchup ?? 'Game details loading…'}</Text>
+
+                <View style={styles.gameInfoList}>
+                  <View style={styles.gameInfoRow}>
+                    <View style={styles.gameInfoIcon}>
+                      <Ionicons name="calendar-outline" size={15} color={colors.goldLight} />
+                    </View>
+                    <Text style={styles.gameInfoText}>{currentGame?.gameDate ?? 'Date pending'}</Text>
+                  </View>
+                  <View style={styles.gameInfoRow}>
+                    <View style={styles.gameInfoIcon}>
+                      <Ionicons name="time-outline" size={15} color={colors.goldLight} />
+                    </View>
+                    <Text style={styles.gameInfoText}>
+                      {currentGame?.kickoffTime ? `Kickoff ${currentGame.kickoffTime}` : 'Kickoff pending'}
+                    </Text>
+                  </View>
+                  <View style={styles.gameInfoRow}>
+                    <View style={styles.gameInfoIcon}>
+                      <Ionicons name="partly-sunny-outline" size={15} color={colors.goldLight} />
+                    </View>
+                    <Text style={styles.gameInfoText}>{currentGame?.weather ?? 'Weather loading'}</Text>
+                  </View>
+                  <View style={styles.gameInfoRow}>
+                    <View style={styles.gameInfoIcon}>
+                      <Ionicons name="location-outline" size={15} color={colors.goldLight} />
+                    </View>
+                    <Text style={styles.gameInfoText}>{currentGame?.location ?? 'Location pending'}</Text>
+                  </View>
+                </View>
+              </View>
+            </ImageBackground>
           </Card>
 
           <SearchBar
@@ -450,6 +499,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
+  screenLeadContainer: {
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
   screenLead: {
     color: colors.text,
     fontSize: typography.heading,
@@ -459,8 +512,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: typography.body,
     fontWeight: '600',
-    marginTop: spacing.sm,
-    lineHeight: 22,
   },
   gameCard: {
     borderColor: colors.border,
@@ -469,27 +520,75 @@ const styles = StyleSheet.create({
     height: 4,
     backgroundColor: colors.gold,
   },
-  gameCardInner: {
+  currentGameCard: {
+    position: 'relative',
     paddingTop: spacing.xl,
     paddingBottom: spacing.lg,
     paddingHorizontal: spacing.xl,
-    backgroundColor: colors.surfaceSoft,
+    minHeight: 250,
   },
-  gameLabel: {
+  currentGameImage: {
+    opacity: 0.9,
+  },
+  currentGameOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(2, 11, 21, 0.74)',
+  },
+  currentGameContent: {
+    gap: spacing.md,
+  },
+  currentGameTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  currentGameLabel: {
     color: '#D8E3F1',
     fontSize: typography.caption,
-    fontWeight: '700',
+    fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  gameMatchup: {
-    marginTop: spacing.sm,
+  currentGamePhaseText: {
+    color: colors.goldLight,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.45,
+    textTransform: 'uppercase',
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: 999,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  currentGameTitle: {
     color: colors.white,
     fontSize: typography.subheading,
     fontWeight: '800',
   },
-  gameMeta: {
-    marginTop: spacing.xs,
+  gameInfoList: {
+    gap: spacing.sm,
+  },
+  gameInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    backgroundColor: 'rgba(7, 26, 45, 0.85)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  gameInfoIcon: {
+    width: 20,
+    alignItems: 'center',
+    marginTop: 1,
+  },
+  gameInfoText: {
+    flex: 1,
     color: '#D8E3F1',
     fontSize: typography.caption,
     lineHeight: 18,
