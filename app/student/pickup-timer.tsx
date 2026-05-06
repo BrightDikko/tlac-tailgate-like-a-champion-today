@@ -297,11 +297,11 @@ export default function PickupTimerScreen() {
             </Text>
           </>
         ) : (
-          <>
+          <View style={styles.timerContainer}>
             <Text style={styles.timerLabel}>Pickup window ends in</Text>
             <Text style={styles.timerValue}>{formatCountdown(remainingSec)}</Text>
             <Text style={styles.timerSub}>Pickup Deadline: {formatClockTime(activeClaim?.expiresAt)}</Text>
-          </>
+          </View>
         )}
       </Card>
 
@@ -362,9 +362,13 @@ const styles = StyleSheet.create({
   },
   timerValue: {
     color: colors.goldLight,
-    fontSize: 48,
+    fontSize: typography.title,
     fontWeight: '900',
     letterSpacing: 0.5,
+  },
+  timerContainer: {
+    gap: spacing.md,
+    alignItems: 'center',
   },
   timerLabel: {
     marginTop: spacing.sm,
@@ -376,8 +380,8 @@ const styles = StyleSheet.create({
   timerSub: {
     marginTop: spacing.xs,
     color: colors.muted,
-    fontSize: typography.caption,
-    fontWeight: '700',
+    fontSize: typography.body,
+    fontWeight: '900',
   },
   detailRow: {
     marginTop: spacing.md,
