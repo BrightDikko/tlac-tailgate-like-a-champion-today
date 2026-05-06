@@ -314,10 +314,6 @@ export default function DiscoverTabScreen() {
     void refetchTailgates();
   };
 
-  const metaLine = currentGame
-    ? `${currentGame.gameDate} · ${currentGame.kickoffTime} · ${currentGame.weather}`
-    : '';
-
   return (
     <Screen scroll safeAreaEdges={['top', 'left', 'right']} contentContainerStyle={styles.content}>
       <AppHeader

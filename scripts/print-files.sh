@@ -16,6 +16,9 @@ find . \
     -name '*.tsx' \
     -o -name '*.ts' \
     -o -name '*.js' \
+    -o -name '*.jsx' \
+    -o -name '*.html' \
+    -o -name '*.css' \
     -o -name '*.json' \
     -o -name '*.md' \
     -o -name '*.config.js' \
