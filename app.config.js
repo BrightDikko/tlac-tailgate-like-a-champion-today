@@ -6,7 +6,7 @@ module.exports = {
     slug: 'tlac',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/images/icon.png',
+    icon: './assets/images/brand/TLAC-logo.png',
     scheme: 'tlac',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
@@ -25,7 +25,7 @@ module.exports = {
     },
     web: {
       output: 'static',
-      favicon: './assets/images/favicon.png',
+      favicon: './assets/images/brand/TLAC-logo.png',
     },
     plugins: [
       'expo-router',

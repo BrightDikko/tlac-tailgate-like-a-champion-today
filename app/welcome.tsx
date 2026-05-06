@@ -15,6 +15,7 @@ import { messageFromUnknownError } from '@/src/utils/errorMessage';
 export default function WelcomeScreen() {
   const [demoLogin, { isLoading: demoLoading }] = useDemoLoginMutation();
   const [demoError, setDemoError] = useState<string | null>(null);
+  const isDemo = API_MODE === 'mock';
 
   const onContinueDemo = async () => {
     setDemoError(null);
@@ -59,22 +60,25 @@ export default function WelcomeScreen() {
         </Card>
       </View>
 
-      <PrimaryButton label="Sign in" onPress={() => router.push('/login')} />
-      <SecondaryButton label="Create account" onPress={() => router.push('/register')} />
-      {API_MODE === 'mock' ? (
+      {isDemo ? (
         <>
           {demoError !== null ? (
             <Card variant="soft" accentColor={colors.navy}>
               <Text style={styles.demoErrorText}>{demoError}</Text>
             </Card>
           ) : null}
-          <SecondaryButton
+          <PrimaryButton
             label={demoLoading ? 'Starting demo…' : 'Continue in Demo Mode'}
             onPress={() => void onContinueDemo()}
             disabled={demoLoading}
           />
         </>
-      ) : null}
+      ) : (
+        <>
+          <PrimaryButton label="Sign in" onPress={() => router.push('/login')} />
+          <SecondaryButton label="Create account" onPress={() => router.push('/register')} />
+        </>
+      )}
     </Screen>
   );
 }

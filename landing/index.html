@@ -3,11 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      if (window.location.pathname.endsWith('/landing')) {
+        window.location.replace(`${window.location.pathname}/${window.location.search}${window.location.hash}`);
+      }
+    </script>
+    <meta name="theme-color" content="#020b15" />
     <meta
       name="description"
-      content="TLAC helps Notre Dame fans discover tailgates, claim surplus food, and reduce gameday waste."
+      content="TLAC helps Notre Dame fans discover tailgates, claim surplus food, and reduce gameday waste across gameday."
     />
-    <title>TLAC | Tailgate Like A Champion</title>
+    <meta property="og:title" content="TLAC | Tailgate Like A Champion Today" />
+    <meta
+      property="og:description"
+      content="Discover tailgates, claim surplus food, and reduce gameday waste with TLAC."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://brightdikko.github.io/tlac-tailgate-like-a-champion-today/" />
+    <meta
+      property="og:image"
+      content="https://brightdikko.github.io/tlac-tailgate-like-a-champion-today/landing/landing-assets/TLAC-logo.png"
+    />
+    <title>TLAC | Tailgate Like A Champion Today</title>
+    <link rel="icon" type="image/png" href="./landing-assets/TLAC-logo.png" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
@@ -17,8 +35,8 @@
           <img class="brand-logo" src="./landing-assets/TLAC-logo.png" alt="TLAC logo" />
         </a>
         <nav class="nav-links" aria-label="Primary">
+          <a href="https://brightdikko.github.io/tlac-tailgate-like-a-champion-today/demo/" class="nav-link">Try Demo</a>
           <a href="https://brightdikko.github.io/tlac-tailgate-like-a-champion-today/login" class="nav-link">Login</a>
-          <a href="https://brightdikko.github.io/tlac-tailgate-like-a-champion-today/demo/" class="nav-link">Demo</a>
           <a href="https://brightdikko.github.io/tlac-tailgate-like-a-champion-today/register" class="btn btn-sm btn-gold">Sign up</a>
         </nav>
       </div>
