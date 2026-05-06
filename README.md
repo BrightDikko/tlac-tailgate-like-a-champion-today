@@ -41,8 +41,10 @@ Expo reads these when the dev server starts. After changing env vars, restart wi
 |--------|---------|
 | `npm run start:mock` | Mock data (`EXPO_PUBLIC_API_MODE=mock`) + clear Metro cache |
 | `npm run start:remote` | Remote HTTPS backend (`EXPO_PUBLIC_API_MODE=remote` + Cloudflare tunnel `EXPO_PUBLIC_API_BASE_URL`) + clear cache |
-| `npm run build:web:prod` | Build static web export against the HTTPS API |
-| `npm run deploy:web` | Build and deploy the web app to GitHub Pages |
+| `npm run build:web:prod` | Build production web export (`/`) against the HTTPS API |
+| `npm run build:web:demo` | Build demo web export (`/demo`) in mock mode |
+| `npm run build:web:all` | Build both production and demo bundles into one deployable `dist` |
+| `npm run deploy:web` | Build and deploy both bundles to GitHub Pages |
 
 ### Run in mock mode
 
@@ -103,6 +105,36 @@ EXPO_PUBLIC_API_MODE=remote EXPO_PUBLIC_API_BASE_URL=https://ministries-generic-
 Or use:
 
 npm run build:web:prod
+
+## GitHub Pages: live app + demo app
+
+GitHub Pages serves two static builds side-by-side:
+
+- Live production app (remote API):  
+  `https://brightdikko.github.io/tlac-tailgate-like-a-champion-today/`
+- Demo app (mock mode):  
+  `https://brightdikko.github.io/tlac-tailgate-like-a-champion-today/demo/`
+
+`build:web:all` is the source of truth for deployment:
+
+- Production bundle uses `EXPO_PUBLIC_BASE_PATH=/tlac-tailgate-like-a-champion-today`, `EXPO_PUBLIC_API_MODE=remote`, and the HTTPS API URL.
+- Demo bundle uses `EXPO_PUBLIC_BASE_PATH=/tlac-tailgate-like-a-champion-today/demo` and `EXPO_PUBLIC_API_MODE=mock`.
+
+Because Expo public env vars are build-time values, production and demo require separate exports (not runtime toggles in one bundle).
+
+To test the combined static output locally:
+
+```bash
+npm run build:web:all
+npx serve dist
+```
+
+Then open both:
+
+- `http://localhost:3000/tlac-tailgate-like-a-champion-today/`
+- `http://localhost:3000/tlac-tailgate-like-a-champion-today/demo/`
+
+Do not use HTTP API URLs for GitHub Pages deploys; browsers block mixed content from HTTPS pages.
 
 Remote mode expects a Bearer access token on authenticated requests, `POST /auth/refresh` with `{ "refreshToken": "..." }` on 401, and `GET /auth/me` for the current user after tokens are restored from secure storage on launch.
 

@@ -101,6 +101,13 @@ a {
   box-shadow: 0 10px 20px rgba(244, 197, 66, 0.24);
 }
 
+.btn-outline {
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #f8fafc;
+  background: rgba(8, 22, 41, 0.7);
+  padding: 0.78rem 1.35rem;
+}
+
 .btn:hover {
   transform: translateY(-1px);
 }
@@ -182,6 +189,12 @@ a {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 700;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .hero-phones {
@@ -289,6 +302,13 @@ a {
   text-align: center;
 }
 
+.cta-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .cta p {
   color: var(--muted);
   margin: 0.85rem auto 1.5rem;
@@ -342,6 +362,10 @@ a {
 
   .hero-copy p {
     margin-inline: auto;
+  }
+
+  .hero-actions {
+    justify-content: center;
   }
 
   .hero-sign {

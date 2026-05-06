@@ -39,11 +39,8 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Export Expo web app
-        run: npm run build:web:prod
-
-      - name: Add nojekyll file
-        run: touch dist/.nojekyll
+      - name: Export Expo web apps (prod + demo)
+        run: npm run build:web:all
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
