@@ -186,12 +186,12 @@ export default function HostProfileTabScreen() {
             <View style={styles.rowBetween}>
               <View style={styles.rowLeft}>
                 <Ionicons name="leaf-outline" size={22} color={colors.green} />
-                <View>
+                <View style={styles.rowCopy}>
                   <Text style={styles.rowTitle}>Donation impact</Text>
                   <Text style={styles.rowSub}>Pounds routed through TLAC donation pathways</Text>
                 </View>
               </View>
-              <Text style={styles.rowValue}>
+              <Text style={[styles.rowValue, styles.rowValueCentered]}>
                 {impact?.poundsDonated !== undefined ? `${impact.poundsDonated} lbs` : 'Not available'}
               </Text>
             </View>
@@ -203,14 +203,23 @@ export default function HostProfileTabScreen() {
                 <Ionicons name="flag-outline" size={22} color={colors.goldLight} />
                 <View>
                   <Text style={styles.rowTitle}>Host readiness</Text>
-                  <Text style={styles.rowSub}>Planned, active, and completed tailgate coverage</Text>
+                  <Text style={styles.rowSub}>Planned, active, and completed coverage</Text>
                 </View>
               </View>
             </View>
             <View style={styles.readinessRow}>
-              <Text style={styles.readinessText}>Planned: {plannedCount}</Text>
-              <Text style={styles.readinessText}>Active: {activeCount}</Text>
-              <Text style={styles.readinessText}>Completed: {completedCount}</Text>
+              <View style={styles.readinessMetricRow}>
+                <Text style={styles.readinessMetricLabel}>Planned tailgates</Text>
+                <Text style={styles.readinessMetricValue}>{plannedCount}</Text>
+              </View>
+              <View style={styles.readinessMetricRow}>
+                <Text style={styles.readinessMetricLabel}>Active tailgates</Text>
+                <Text style={styles.readinessMetricValue}>{activeCount}</Text>
+              </View>
+              <View style={styles.readinessMetricRow}>
+                <Text style={styles.readinessMetricLabel}>Completed tailgates</Text>
+                <Text style={styles.readinessMetricValue}>{completedCount}</Text>
+              </View>
             </View>
           </Card>
 
@@ -308,42 +317,74 @@ const styles = StyleSheet.create({
   },
   rowBetween: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: spacing.md,
   },
   rowLeft: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.md,
     flex: 1,
+    minWidth: 0,
+  },
+  rowCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   rowTitle: {
     color: colors.text,
     fontSize: typography.body,
     fontWeight: '800',
+    marginBottom: spacing.xs,
   },
   rowSub: {
     color: colors.muted,
     fontSize: typography.caption,
     marginTop: 2,
     lineHeight: 18,
+    flexShrink: 1,
+    flexWrap: 'wrap',
   },
   rowValue: {
     color: colors.goldLight,
-    fontSize: typography.subheading,
+    fontSize: typography.heading,
     fontWeight: '900',
+    flexShrink: 0,
+    textAlign: 'right',
+    marginLeft: spacing.sm,
+  },
+  rowValueCentered: {
+    alignSelf: 'center',
   },
   readinessRow: {
     marginTop: spacing.md,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.sm,
   },
-  readinessText: {
-    color: colors.goldLight,
+  readinessMetricRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    backgroundColor: colors.surfaceSoft,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.xs,
+    gap: spacing.md,
+  },
+  readinessMetricLabel: {
+    color: colors.muted,
     fontSize: typography.caption,
     fontWeight: '700',
+    lineHeight: 18,
+  },
+  readinessMetricValue: {
+    color: colors.goldLight,
+    fontSize: typography.subheading,
+    fontWeight: '900',
+    textAlign: 'right',
   },
   flexOne: {
     flex: 1,

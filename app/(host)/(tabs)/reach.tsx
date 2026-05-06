@@ -152,6 +152,8 @@ export default function HostReachTabScreen() {
 
       {showMainContent && currentUser ? (
         <>
+          <View style={styles.sectionDivider} />
+
           <SectionHeader title="Visibility snapshot" subtitle="What Student / Fan surfaces can show right now." />
           <View style={styles.metricsGrid}>
             <MetricCard label="Active tailgates" value={String(activeCount)} style={styles.metricCard} />
@@ -182,6 +184,8 @@ export default function HostReachTabScreen() {
             </View>
           </Card>
 
+          <View style={styles.sectionDivider} />
+
           <SectionHeader title="Your visible tailgates" subtitle="Only active listings surface in Discover." />
           {activeTailgates.length > 0 ? (
             <View style={styles.listCol}>
@@ -191,6 +195,7 @@ export default function HostReachTabScreen() {
                     <Text style={styles.compactTitle}>{tailgate.groupName}</Text>
                     <StatusChip status={tailgate.status} showDot />
                   </View>
+                  <View style={styles.sectionDivider} />
                   <View style={styles.metaRow}>
                     <Ionicons name="location-outline" size={16} color={colors.muted} />
                     <Text style={styles.metaText}>{tailgateLocation(tailgate)}</Text>
@@ -205,6 +210,7 @@ export default function HostReachTabScreen() {
                     <Ionicons name="trending-up-outline" size={16} color={colors.green} />
                     <Text style={styles.metaText}>Trending score {tailgate.trendingScore}</Text>
                   </View>
+                  <View style={styles.sectionDivider} />
                   <SecondaryButton
                     label="Preview detail"
                     onPress={() =>
@@ -224,6 +230,8 @@ export default function HostReachTabScreen() {
             </Card>
           )}
 
+          <View style={styles.sectionDivider} />
+
           <SectionHeader title="Live surplus reach" subtitle="Claimable listings in the Student / Fan Surplus tab." />
           {liveHostSurplus.length > 0 ? (
             <View style={styles.listCol}>
@@ -233,6 +241,7 @@ export default function HostReachTabScreen() {
                     <Text style={styles.compactTitle}>{item.foodName}</Text>
                     <StatusChip status={item.status} showDot />
                   </View>
+                  <View style={styles.sectionDivider} />
                   <Text style={styles.surplusGroup}>{item.groupName}</Text>
                   <Text style={styles.surplusMeta}>
                     {item.servingsRemaining} servings · Available until {formatClockTime(item.expiresAt)}
@@ -257,6 +266,7 @@ export default function HostReachTabScreen() {
             </Card>
           )}
 
+          <View style={styles.sectionDivider} />
           <Card variant="soft">
             <Text style={styles.cardTitle}>Improve your reach</Text>
             <Text style={styles.cardBody}>
@@ -288,7 +298,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: typography.body,
     fontWeight: '600',
-    marginTop: spacing.sm,
     lineHeight: 22,
   },
   loadingBlock: {
@@ -304,6 +313,11 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: spacing.md,
+  },
+  sectionDivider: {
+    marginVertical: spacing.md,
+    height: 1,
+    backgroundColor: colors.border,
   },
   metricsGrid: {
     flexDirection: 'row',
@@ -337,10 +351,10 @@ const styles = StyleSheet.create({
   },
   buttonStack: {
     marginTop: spacing.sm,
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   listCol: {
-    gap: spacing.md,
+    gap: spacing.lg,
   },
   compactCard: {
     gap: spacing.sm,
@@ -361,6 +375,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    marginVertical: spacing.xs,
   },
   metaText: {
     flex: 1,
@@ -371,20 +386,21 @@ const styles = StyleSheet.create({
   },
   surplusGroup: {
     color: colors.goldLight,
-    fontSize: typography.caption,
+    fontSize: typography.subheading,
     fontWeight: '700',
+    marginBottom: spacing.sm,
   },
   surplusMeta: {
     color: colors.text,
-    fontSize: typography.caption,
+    fontSize: typography.body,
     fontWeight: '600',
   },
   pickupNote: {
     marginTop: spacing.xs,
     color: colors.muted,
-    fontSize: typography.caption,
-    fontWeight: '600',
-    lineHeight: 18,
+    fontSize: typography.body,
+    fontWeight: '400',
+    lineHeight: 22,
   },
   emptyTitle: {
     color: colors.text,

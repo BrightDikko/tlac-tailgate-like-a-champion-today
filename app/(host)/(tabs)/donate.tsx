@@ -142,9 +142,10 @@ const styles = StyleSheet.create({
   },
   centerHead: {
     gap: spacing.sm,
+    paddingVertical: spacing.sm,
   },
   categoryRow: {
-    marginTop: spacing.xs,
+    marginVertical: spacing.xs,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
@@ -181,7 +182,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     marginTop: spacing.md,
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   loadingBlock: {
     paddingVertical: spacing.xl,

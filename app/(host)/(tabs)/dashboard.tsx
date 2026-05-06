@@ -9,7 +9,7 @@ import {
   type ImageSourcePropType,
 } from 'react-native';
 
-import { placeholderImages, tailgateImages } from '@/src/assets/images';
+import { placeImages, placeholderImages, tailgateImages } from '@/src/assets/images';
 import { useGetMeQuery } from '@/src/api/endpoints/authApi';
 import { useGetCurrentGameQuery } from '@/src/api/endpoints/gamesApi';
 import { useGetTailgatesQuery } from '@/src/api/endpoints/tailgatesApi';
@@ -34,6 +34,10 @@ import { messageFromUnknownError } from '@/src/utils/errorMessage';
 
 function phaseLabel(phase: GamePhase) {
   return phase === 'postgame' ? 'Post-game' : 'Pregame';
+}
+
+function phaseBadgeLabel(phase: GamePhase): string {
+  return phase === 'postgame' ? 'POSTGAME' : 'PREGAME';
 }
 
 function countByStatus(tailgates: Tailgate[], status: Tailgate['status']) {
@@ -160,20 +164,58 @@ export default function HostDashboardTabScreen() {
       ) : null}
 
       {currentGame && !gameError && (!skipProtected ? !meError : true) ? (
-        <Card variant="soft" accentColor={colors.navy}>
-          <Text style={styles.contextLabel}>Current game</Text>
-          <Text style={styles.contextMatchup}>{currentGame.matchup}</Text>
-          <Text style={styles.contextMeta}>
-            {currentGame.gameDate} · Kickoff {currentGame.kickoffTime}
-          </Text>
-          <Text style={styles.contextMeta}>
-            {currentGame.location} · {currentGame.weather}
-          </Text>
+        <Card style={styles.gameCard} noPadding>
+          <View style={styles.gameTopAccent} />
+          <ImageBackground
+            source={placeImages['notre-dame-stadium']}
+            resizeMode="cover"
+            style={styles.currentGameCard}
+            imageStyle={styles.currentGameImage}
+          >
+            <View style={styles.currentGameOverlay} />
+            <View style={styles.currentGameContent}>
+              <View style={styles.currentGameTopRow}>
+                <Text style={styles.currentGameLabel}>Current game</Text>
+                <Text style={styles.currentGamePhaseText}>{phaseBadgeLabel(currentGame.phase)}</Text>
+              </View>
+
+              <Text style={styles.currentGameTitle}>{currentGame.matchup}</Text>
+
+              <View style={styles.gameInfoList}>
+                <View style={styles.gameInfoRow}>
+                  <View style={styles.gameInfoIcon}>
+                    <Ionicons name="calendar-outline" size={15} color={colors.goldLight} />
+                  </View>
+                  <Text style={styles.gameInfoText}>{currentGame.gameDate}</Text>
+                </View>
+                <View style={styles.gameInfoRow}>
+                  <View style={styles.gameInfoIcon}>
+                    <Ionicons name="time-outline" size={15} color={colors.goldLight} />
+                  </View>
+                  <Text style={styles.gameInfoText}>Kickoff {currentGame.kickoffTime}</Text>
+                </View>
+                <View style={styles.gameInfoRow}>
+                  <View style={styles.gameInfoIcon}>
+                    <Ionicons name="partly-sunny-outline" size={15} color={colors.goldLight} />
+                  </View>
+                  <Text style={styles.gameInfoText}>{currentGame.weather}</Text>
+                </View>
+                <View style={styles.gameInfoRow}>
+                  <View style={styles.gameInfoIcon}>
+                    <Ionicons name="location-outline" size={15} color={colors.goldLight} />
+                  </View>
+                  <Text style={styles.gameInfoText}>{currentGame.location}</Text>
+                </View>
+              </View>
+            </View>
+          </ImageBackground>
         </Card>
       ) : null}
 
       {!queriesLoading && !hasQueryError && userId ? (
         <>
+          <View style={styles.sectionDivider} />
+
           <SectionHeader title="Summary" />
           <View style={styles.metricsGrid}>
             <MetricCard label="Tailgates" value={String(hostTailgates.length)} style={styles.metricCard} />
@@ -182,16 +224,22 @@ export default function HostDashboardTabScreen() {
             <MetricCard label="Completed" value={String(completedCount)} style={styles.metricCard} />
           </View>
 
+          <View style={styles.sectionDivider} />
+
           <SectionHeader title="Quick actions" />
+
           <View style={styles.actionsCol}>
             <PrimaryButton label="Create tailgate" onPress={() => router.push('/create-tailgate')} />
             <SecondaryButton label="Donation centers" onPress={() => router.push('/donate')} />
           </View>
 
-          <SectionHeader
-            title="Your tailgates"
-            subtitle="Edit details, update the menu, and manage surplus from each tailgate."
-          />
+          <View style={styles.sectionDivider} />
+
+          <View style={styles.screenLeadVariantContainer}>
+            <Text style={styles.screenLeadVariant}>Your tailgates</Text>
+            <Text style={styles.screenLeadMutedVariant}>Edit details, update the menu, and manage surplus from each tailgate.</Text>
+          </View>
+
 
           {hostTailgates.length === 0 ? (
             <Card variant="soft" accentColor={colors.navy}>
@@ -354,31 +402,111 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.heading,
     fontWeight: '900',
+    marginTop: spacing.sm,
+  },
+  screenLeadVariantContainer: {
+    gap: spacing.md,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  screenLeadVariant: {
+    color: colors.text,
+    fontSize: typography.heading,
+    fontWeight: '800',
   },
   screenLeadMuted: {
     color: colors.muted,
     fontSize: typography.body,
     fontWeight: '600',
+    lineHeight: 23,
+    marginTop: -spacing.sm,
+  },
+  screenLeadMutedVariant: {
+    color: colors.muted,
+    fontSize: typography.body,
+    fontWeight: '400',
+    lineHeight: 23,
     marginTop: spacing.xs,
   },
-  contextLabel: {
-    color: colors.goldLight,
+  gameCard: {
+    borderColor: colors.border,
+  },
+  gameTopAccent: {
+    height: 4,
+    backgroundColor: colors.gold,
+  },
+  currentGameCard: {
+    position: 'relative',
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    minHeight: 250,
+  },
+  currentGameImage: {
+    opacity: 0.9,
+  },
+  currentGameOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(2, 11, 21, 0.74)',
+  },
+  currentGameContent: {
+    gap: spacing.md,
+  },
+  currentGameTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+  },
+  currentGameLabel: {
+    color: '#D8E3F1',
     fontSize: typography.caption,
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  contextMatchup: {
-    marginTop: spacing.xs,
-    color: colors.text,
+  currentGamePhaseText: {
+    color: colors.goldLight,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.45,
+    textTransform: 'uppercase',
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    borderRadius: 999,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  currentGameTitle: {
+    color: colors.white,
     fontSize: typography.subheading,
     fontWeight: '800',
   },
-  contextMeta: {
-    marginTop: spacing.xs,
-    color: colors.muted,
-    fontSize: typography.body,
-    fontWeight: '600',
+  gameInfoList: {
+    gap: spacing.sm,
+  },
+  gameInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    backgroundColor: 'rgba(7, 26, 45, 0.85)',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  gameInfoIcon: {
+    width: 20,
+    alignItems: 'center',
+    marginTop: 1,
+  },
+  gameInfoText: {
+    flex: 1,
+    color: '#D8E3F1',
+    fontSize: typography.caption,
+    lineHeight: 18,
   },
   helperCopy: {
     marginTop: spacing.sm,
@@ -400,8 +528,13 @@ const styles = StyleSheet.create({
     width: '48%',
     minWidth: 0,
   },
+  sectionDivider: {
+    marginTop: spacing.sm,
+    height: 1,
+    backgroundColor: colors.border,
+  },
   actionsCol: {
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   tailgateList: {
     gap: spacing.md,
@@ -557,7 +690,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   tailgateActions: {
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   emptyTitle: {
     color: colors.text,

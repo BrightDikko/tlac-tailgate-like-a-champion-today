@@ -494,6 +494,8 @@ export default function HostPublishTabScreen() {
             </View>
           </Card>
 
+          <View style={styles.sectionDivider} />
+
           <Text style={styles.sectionEyebrow}>Listing</Text>
           <Text style={styles.sectionTitle}>Which tailgate?</Text>
           <Text style={styles.sectionSubtitle}>Surplus posts use this group name and lot copy.</Text>
@@ -590,7 +592,9 @@ export default function HostPublishTabScreen() {
 
           {!menuLoading && !menuError && menuItems.length > 0 ? (
             <>
-              <Text style={[styles.sectionEyebrow, styles.sectionEyebrowSpaced]}>Menu</Text>
+              <View style={styles.sectionDivider} />
+
+              <Text style={styles.sectionEyebrow}>Menu</Text>
               <Text style={styles.sectionTitle}>Select leftovers</Text>
               <Text style={styles.sectionSubtitle}>
                 Tap a row to include it. Set servings for each dish you list.
@@ -629,7 +633,7 @@ export default function HostPublishTabScreen() {
                             <Text style={styles.foodRowPrepared}>Prepared · {qtyPrepared} servings</Text>
                           ) : null}
                           <Text style={draft.selected ? styles.foodRowStatusOn : styles.foodRowStatusOff}>
-                            {draft.selected ? 'Included · tap to remove' : 'Tap to add'}
+                            {draft.selected ? 'Included · Tap to remove' : 'Tap to add'}
                           </Text>
                         </View>
                         <View style={styles.foodRowCheck}>
@@ -664,7 +668,9 @@ export default function HostPublishTabScreen() {
                 })}
               </View>
 
-              <Text style={[styles.sectionEyebrow, styles.sectionEyebrowSpaced]}>Timing</Text>
+              <View style={styles.sectionDivider} />
+
+              <Text style={styles.sectionEyebrow}>Timing</Text>
               <Text style={styles.sectionTitle}>Availability deadline</Text>
               <Text style={styles.sectionSubtitle}>
                 Students can claim this surplus until this window ends.
@@ -834,7 +840,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     alignItems: 'flex-start',
     marginTop: spacing.sm,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.lg,
     borderRadius: radii.md,
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -853,7 +860,7 @@ const styles = StyleSheet.create({
   gameContextCopy: {
     flex: 1,
     minWidth: 0,
-    gap: spacing.xs,
+    gap: spacing.sm,
   },
   gameContextLabel: {
     color: colors.goldLight,
@@ -901,7 +908,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: spacing.md,
     width: '100%',
-    paddingVertical: spacing.sm + 2,
+    paddingVertical: spacing.md + 2,
     paddingHorizontal: spacing.md,
     borderRadius: radii.md,
     borderWidth: 1,
@@ -915,7 +922,7 @@ const styles = StyleSheet.create({
   heroStatTextCol: {
     flex: 1,
     minWidth: 0,
-    gap: 2,
+    gap: spacing.xs + 2,
   },
   heroStatLabel: {
     color: colors.muted,
@@ -937,13 +944,17 @@ const styles = StyleSheet.create({
     minWidth: 56,
     textAlign: 'right',
   },
+  sectionDivider: {
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
+    height: 1,
+    backgroundColor: colors.border,
+  },
   sectionEyebrow: {
-    marginTop: spacing.xs,
     color: colors.goldLight,
-    fontSize: typography.caption,
+    fontSize: typography.heading,
     fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.55,
+    letterSpacing: 0.6,
   },
   sectionEyebrowSpaced: {
     marginTop: spacing.xl,
@@ -958,10 +969,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   sectionSubtitle: {
-    marginTop: spacing.xs,
+    marginBottom: spacing.sm,
     color: colors.muted,
     fontSize: typography.body,
-    fontWeight: '600',
+    fontWeight: '400',
     lineHeight: 22,
   },
   tailgateScroll: {
@@ -1051,7 +1062,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   foodList: {
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   foodRowCard: {
     borderRadius: radii.lg,

@@ -9,11 +9,12 @@ type WebPhoneFrameProps = {
 };
 
 export function WebPhoneFrame({ children }: WebPhoneFrameProps) {
+  const { width } = useWindowDimensions();
+
   if (Platform.OS !== 'web') {
     return <>{children}</>;
   }
 
-  const { width } = useWindowDimensions();
   const shouldUsePhoneFrame = width >= 460;
 
   if (!shouldUsePhoneFrame) {
